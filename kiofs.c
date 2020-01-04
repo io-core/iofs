@@ -1,79 +1,79 @@
-#include "khellofs.h"
+#include "kiofs.h"
 
-DEFINE_MUTEX(hellofs_sb_lock);
+DEFINE_MUTEX(iofs_sb_lock);
 
-struct file_system_type hellofs_fs_type = {
+struct file_system_type iofs_fs_type = {
     .owner = THIS_MODULE,
-    .name = "hellofs",
-    .mount = hellofs_mount,
-    .kill_sb = hellofs_kill_superblock,
+    .name = "iofs",
+    .mount = iofs_mount,
+    .kill_sb = iofs_kill_superblock,
     .fs_flags = FS_REQUIRES_DEV,
 };
 
-const struct super_operations hellofs_sb_ops = {
-    .destroy_inode = hellofs_destroy_inode,
-    .put_super = hellofs_put_super,
+const struct super_operations iofs_sb_ops = {
+    .destroy_inode = iofs_destroy_inode,
+    .put_super = iofs_put_super,
 };
 
-const struct inode_operations hellofs_inode_ops = {
-    .create = hellofs_create,
-    .mkdir = hellofs_mkdir,
-    .lookup = hellofs_lookup,
+const struct inode_operations iofs_inode_ops = {
+    .create = iofs_create,
+    .mkdir = iofs_mkdir,
+    .lookup = iofs_lookup,
 };
 
-const struct file_operations hellofs_dir_operations = {
+const struct file_operations iofs_dir_operations = {
     .owner = THIS_MODULE,
-    .iterate = hellofs_iterate,
-    .iterate_shared = hellofs_iterate_shared,
+    .iterate = iofs_iterate,
+    .iterate_shared = iofs_iterate_shared,
 };  //was readdir, now iterate
 
-const struct file_operations hellofs_file_operations = {
-    .read = hellofs_read,
-    .write = hellofs_write,
+const struct file_operations iofs_file_operations = {
+    .read = iofs_read,
+    .write = iofs_write,
 };
 
-struct kmem_cache *hellofs_inode_cache = NULL;
+struct kmem_cache *iofs_inode_cache = NULL;
 
-static int __init hellofs_init(void)
+static int __init iofs_init(void)
 {
     int ret;
 
-    hellofs_inode_cache = kmem_cache_create("hellofs_inode_cache",
-                                         sizeof(struct hellofs_inode),
+    iofs_inode_cache = kmem_cache_create("iofs_inode_cache",
+                                         sizeof(struct iofs_inode),
                                          0,
                                          (SLAB_RECLAIM_ACCOUNT| SLAB_MEM_SPREAD),
                                          NULL);
-    if (!hellofs_inode_cache) {
+    if (!iofs_inode_cache) {
         return -ENOMEM;
     }
 
-    ret = register_filesystem(&hellofs_fs_type);
+    ret = register_filesystem(&iofs_fs_type);
     if (likely(0 == ret)) {
-        printk(KERN_INFO "Sucessfully registered hellofs\n");
+        printk(KERN_INFO "Sucessfully registered iofs\n");
     } else {
-        printk(KERN_ERR "Failed to register hellofs. Error code: %d\n", ret);
+        printk(KERN_ERR "Failed to register iofs. Error code: %d\n", ret);
     }
 
     return ret;
 }
 
-static void __exit hellofs_exit(void)
+static void __exit iofs_exit(void)
 {
     int ret;
 
-    ret = unregister_filesystem(&hellofs_fs_type);
-    kmem_cache_destroy(hellofs_inode_cache);
+    ret = unregister_filesystem(&iofs_fs_type);
+    kmem_cache_destroy(iofs_inode_cache);
 
     if (likely(ret == 0)) {
-        printk(KERN_INFO "Sucessfully unregistered hellofs\n");
+        printk(KERN_INFO "Sucessfully unregistered iofs\n");
     } else {
-        printk(KERN_ERR "Failed to unregister hellofs. Error code: %d\n",
+        printk(KERN_ERR "Failed to unregister iofs. Error code: %d\n",
                ret);
     }
 }
 
-module_init(hellofs_init);
-module_exit(hellofs_exit);
+module_init(iofs_init);
+module_exit(iofs_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("accelazh");
+MODULE_AUTHOR("charlesap");
