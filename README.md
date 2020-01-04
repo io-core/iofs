@@ -1,2 +1,2 @@
-# oberonfs
-Linux kernel module implementing the Oberon filesystem
+# iofs
+Linux kernel module implementing the (Integrated) Oberon filesystem
