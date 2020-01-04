@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "hellofs.h"
+#include "iofs.h"
 
 int main(int argc, char *argv[]) {
     int fd;
@@ -22,51 +22,51 @@ int main(int argc, char *argv[]) {
     }
 
     // construct superblock
-    struct hellofs_superblock hellofs_sb = {
+    struct iofs_superblock iofs_sb = {
         .version = 1,
-        .magic = HELLOFS_MAGIC,
-        .blocksize = HELLOFS_DEFAULT_BLOCKSIZE,
-        .inode_table_size = HELLOFS_DEFAULT_INODE_TABLE_SIZE,
+        .magic = IOFS_MAGIC,
+        .blocksize = IOFS_DEFAULT_BLOCKSIZE,
+        .inode_table_size = IOFS_DEFAULT_INODE_TABLE_SIZE,
         .inode_count = 2,
-        .data_block_table_size = HELLOFS_DEFAULT_DATA_BLOCK_TABLE_SIZE,
+        .data_block_table_size = IOFS_DEFAULT_DATA_BLOCK_TABLE_SIZE,
         .data_block_count = 2,
     };
 
     // construct inode bitmap
-    char inode_bitmap[hellofs_sb.blocksize];
+    char inode_bitmap[iofs_sb.blocksize];
     memset(inode_bitmap, 0, sizeof(inode_bitmap));
     inode_bitmap[0] = 1;
 
     // construct data block bitmap
-    char data_block_bitmap[hellofs_sb.blocksize];
+    char data_block_bitmap[iofs_sb.blocksize];
     memset(data_block_bitmap, 0, sizeof(data_block_bitmap));
     data_block_bitmap[0] = 1;
 
     // construct root inode
-    struct hellofs_inode root_hellofs_inode = {
+    struct iofs_inode root_iofs_inode = {
         .mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH,
-        .inode_no = HELLOFS_ROOTDIR_INODE_NO,
+        .inode_no = IOFS_ROOTDIR_INODE_NO,
         .data_block_no 
-            = HELLOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&hellofs_sb)
-                + HELLOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET,
+            = IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&iofs_sb)
+                + IOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET,
         .dir_children_count = 1,
     };
 
     // construct welcome file inode
     char welcome_body[] = "Welcome Hellofs!!\n";
-    welcome_inode_no = HELLOFS_ROOTDIR_INODE_NO + 1;
-    welcome_data_block_no_offset = HELLOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET + 1;
-    struct hellofs_inode welcome_hellofs_inode = {
+    welcome_inode_no = IOFS_ROOTDIR_INODE_NO + 1;
+    welcome_data_block_no_offset = IOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET + 1;
+    struct iofs_inode welcome_iofs_inode = {
         .mode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH,
         .inode_no = welcome_inode_no,
         .data_block_no 
-            = HELLOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&hellofs_sb)
+            = IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&iofs_sb)
                 + welcome_data_block_no_offset,
         .file_size = sizeof(welcome_body),
     };
 
     // construct root inode data block
-    struct hellofs_dir_record root_dir_records[] = {
+    struct iofs_dir_record root_dir_records[] = {
         {
             .filename = "wel_helo.txt",
             .inode_no = welcome_inode_no,
@@ -76,13 +76,13 @@ int main(int argc, char *argv[]) {
     ret = 0;
     do {
         // write super block
-        if (sizeof(hellofs_sb)
-                != write(fd, &hellofs_sb, sizeof(hellofs_sb))) {
+        if (sizeof(iofs_sb)
+                != write(fd, &iofs_sb, sizeof(iofs_sb))) {
             ret = -1;
             break;
         }
         if ((off_t)-1
-                == lseek(fd, hellofs_sb.blocksize, SEEK_SET)) {
+                == lseek(fd, iofs_sb.blocksize, SEEK_SET)) {
             ret = -2;
             break;
         }
@@ -103,17 +103,17 @@ int main(int argc, char *argv[]) {
         }
 
         // write root inode
-        if (sizeof(root_hellofs_inode)
-                != write(fd, &root_hellofs_inode,
-                         sizeof(root_hellofs_inode))) {
+        if (sizeof(root_iofs_inode)
+                != write(fd, &root_iofs_inode,
+                         sizeof(root_iofs_inode))) {
             ret = -5;
             break;
         }
 
         // write welcome file inode
-        if (sizeof(welcome_hellofs_inode)
-                != write(fd, &welcome_hellofs_inode,
-                         sizeof(welcome_hellofs_inode))) {
+        if (sizeof(welcome_iofs_inode)
+                != write(fd, &welcome_iofs_inode,
+                         sizeof(welcome_iofs_inode))) {
             ret = -6;
             break;
         }
@@ -122,8 +122,8 @@ int main(int argc, char *argv[]) {
         if ((off_t)-1
                 == lseek(
                     fd,
-                    HELLOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&hellofs_sb)
-                        * hellofs_sb.blocksize,
+                    IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&iofs_sb)
+                        * iofs_sb.blocksize,
                     SEEK_SET)) {
             ret = -7;
             break;
@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
         if ((off_t)-1
                 == lseek(
                     fd,
-                    (HELLOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&hellofs_sb)
-                        + 1) * hellofs_sb.blocksize,
+                    (IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(&iofs_sb)
+                        + 1) * iofs_sb.blocksize,
                     SEEK_SET)) {
             ret = -9;
             break;
