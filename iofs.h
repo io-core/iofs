@@ -2,11 +2,16 @@
 #define __IOFS_H__
 
 #define BITS_IN_BYTE 8
-#define IOFS_MAGIC 0x20160105
+#define IOFS_MAGIC 0x9b1ea38d  // [ 141 163 30 155 ] 8D A3 1E 9B -- Oberon Directory Mark
 #define IOFS_DEFAULT_BLOCKSIZE 4096
 #define IOFS_DEFAULT_INODE_TABLE_SIZE 1024
 #define IOFS_DEFAULT_DATA_BLOCK_TABLE_SIZE 1024
 #define IOFS_FILENAME_MAXLEN 255
+
+#define IOFS_DIRMARK 0x9B1EA38D
+#define IOFS_HEADERMARK 0x9BA71D86
+
+
 
 /* Define filesystem structures */
 

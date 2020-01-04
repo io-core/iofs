@@ -1,10 +1,35 @@
 #include "kiofs.h"
+#include <linux/vfs.h>
 
 int iofs_iterate(struct file *filp, struct dir_context *dc) {
 
 	return 0;
 }
 int iofs_iterate_shared(struct file *filp, struct dir_context *dc) {
+	return 0;
+}
+
+int iofs_statfs(struct dentry *dentry, struct kstatfs *buf) {
+	struct super_block *sb = dentry->d_sb;
+	u64 id = 0;
+
+	if (sb->s_bdev)
+		id = huge_encode_dev(sb->s_bdev->bd_dev);
+	else if (sb->s_dev)
+		id = huge_encode_dev(sb->s_dev);
+
+
+	buf->f_type = IOFS_MAGIC;
+	buf->f_bsize = IOFS_DEFAULT_BLOCKSIZE;
+	buf->f_blocks = 0; //CRAMFS_SB(sb)->blocks;
+	buf->f_bfree = 0;
+	buf->f_bavail = 0;
+	buf->f_files = 0;
+	buf->f_ffree = 0;
+	buf->f_fsid.val[0] = (u32)id;
+	buf->f_fsid.val[1] = (u32)(id >> 32);
+	buf->f_namelen = IOFS_FILENAME_MAXLEN;
+
 	return 0;
 }
 

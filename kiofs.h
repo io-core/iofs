@@ -44,6 +44,8 @@ int iofs_iterate(struct file *filp, struct dir_context *dc);
 
 int iofs_iterate_shared(struct file *filp, struct dir_context *dc);
 
+int iofs_statfs(struct dentry *dentry, struct kstatfs *buf);
+
 int iofs_readdir(struct file *filp, void *dirent, filldir_t filldir);
 
 ssize_t iofs_read(struct file * filp, char __user * buf, size_t len,

@@ -13,6 +13,7 @@ struct file_system_type iofs_fs_type = {
 const struct super_operations iofs_sb_ops = {
     .destroy_inode = iofs_destroy_inode,
     .put_super = iofs_put_super,
+    .statfs = iofs_statfs,
 };
 
 const struct inode_operations iofs_inode_ops = {
