@@ -14,8 +14,8 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
     if (unlikely(iofs_sb->magic != IOFS_MAGIC)) {
         printk(KERN_ERR
                "The filesystem being mounted is not of type iofs. "
-               "Magic number mismatch: %llu != %llu\n",
-               iofs_sb->magic, (uint64_t)IOFS_MAGIC);
+               "Magic number mismatch: %u != %u\n",
+               iofs_sb->magic, (uint32_t)IOFS_MAGIC);
         goto release;
     }
 

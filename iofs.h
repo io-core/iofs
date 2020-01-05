@@ -40,8 +40,8 @@ struct iofs_inode {
 };
 
 struct iofs_superblock {
-    uint64_t version;
-    uint64_t magic;
+    uint32_t magic;
+    uint32_t version;
     uint64_t blocksize;
 
     uint64_t inode_table_size;
