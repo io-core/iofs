@@ -1,10 +1,6 @@
 #include "kiofs.h"
 #include <linux/vfs.h>
 
-int iofs_iterate(struct file *filp, struct dir_context *dc) {
-
-	return 0;
-}
 int iofs_iterate_shared(struct file *filp, struct dir_context *dc) {
 	return 0;
 }

@@ -23,10 +23,12 @@ const struct inode_operations iofs_inode_ops = {
 };
 
 const struct file_operations iofs_dir_operations = {
-    .owner = THIS_MODULE,
-    .iterate = iofs_iterate,
-    .iterate_shared = iofs_iterate_shared,
-};  //was readdir, now iterate
+    .owner		= THIS_MODULE,
+    .llseek		= generic_file_llseek,
+    .read		= generic_read_dir,
+    .iterate_shared	= iofs_iterate_shared,
+    .fsync		= generic_file_fsync,
+};  
 
 const struct file_operations iofs_file_operations = {
     .read = iofs_read,

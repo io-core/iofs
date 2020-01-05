@@ -1,14 +1,15 @@
 #include "kiofs.h"
 
 static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
-    struct inode *root_inode;
-    struct iofs_inode *root_iofs_inode;
+//    struct inode *root_inode;
+//    struct iofs_inode *root_iofs_inode;
     struct buffer_head *bh;
     struct iofs_superblock *iofs_sb;
-    int ret = 0;
+    int ret = -ENOSYS;
 
     bh = sb_bread(sb, IOFS_SUPERBLOCK_BLOCK_NO);
     BUG_ON(!bh);
+
     iofs_sb = (struct iofs_superblock *)bh->b_data;
     if (unlikely(iofs_sb->magic != IOFS_MAGIC)) {
         printk(KERN_ERR
@@ -17,6 +18,8 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
                iofs_sb->magic, (uint64_t)IOFS_MAGIC);
         goto release;
     }
+
+/*
     if (unlikely(sb->s_blocksize != iofs_sb->blocksize)) {
         printk(KERN_ERR
                "iofs seem to be formatted with mismatching blocksize: %lu\n",
@@ -43,6 +46,8 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
         ret = -ENOMEM;
         goto release;
     }
+
+*/
 
 release:
     brelse(bh);
