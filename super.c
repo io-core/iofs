@@ -5,7 +5,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
 //    struct iofs_inode *root_iofs_inode;
     struct buffer_head *bh;
     struct iofs_superblock *iofs_sb;
-    int ret = -ENOSYS;
+    int ret = 0;
 
     bh = sb_bread(sb, IOFS_SUPERBLOCK_BLOCK_NO);
     BUG_ON(!bh);
@@ -16,22 +16,17 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
                "The filesystem being mounted is not of type iofs. "
                "Magic number mismatch: %u != %u\n",
                iofs_sb->magic, (uint32_t)IOFS_MAGIC);
+        ret = -ENOSYS;
         goto release;
     }
 
-/*
-    if (unlikely(sb->s_blocksize != iofs_sb->blocksize)) {
-        printk(KERN_ERR
-               "iofs seem to be formatted with mismatching blocksize: %lu\n",
-               sb->s_blocksize);
-        goto release;
-    }
+
 
     sb->s_magic = iofs_sb->magic;
     sb->s_fs_info = iofs_sb;
-    sb->s_maxbytes = iofs_sb->blocksize;
+    sb->s_maxbytes = 1024; 
     sb->s_op = &iofs_sb_ops;
-
+/*
     root_iofs_inode = iofs_get_iofs_inode(sb, IOFS_ROOTDIR_INODE_NO);
     root_inode = new_inode(sb);
     if (!root_inode || !root_iofs_inode) {
@@ -81,6 +76,7 @@ void iofs_put_super(struct super_block *sb) {
 }
 
 void iofs_save_sb(struct super_block *sb) {
+/*
     struct buffer_head *bh;
     struct iofs_superblock *iofs_sb = IOFS_SB(sb);
 
@@ -91,4 +87,5 @@ void iofs_save_sb(struct super_block *sb) {
     mark_buffer_dirty(bh);
     sync_dirty_buffer(bh);
     brelse(bh);
+*/
 }

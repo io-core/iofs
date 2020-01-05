@@ -79,14 +79,14 @@ static const uint64_t IOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET = 0;
 
 static inline uint64_t IOFS_INODES_PER_BLOCK_HSB(
         struct iofs_superblock *iofs_sb) {
-    return iofs_sb->blocksize / sizeof(struct iofs_inode);
+    return 24; //iofs_sb->blocksize / sizeof(struct iofs_inode);
 }
 
 static inline uint64_t IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(
         struct iofs_superblock *iofs_sb) {
-    return IOFS_INODE_TABLE_START_BLOCK_NO
-           + iofs_sb->inode_table_size / IOFS_INODES_PER_BLOCK_HSB(iofs_sb)
-           + 1;
+    return 1; //IOFS_INODE_TABLE_START_BLOCK_NO
+         //  + iofs_sb->inode_table_size / IOFS_INODES_PER_BLOCK_HSB(iofs_sb)
+         //  + 1;
 }
 
 #endif /*__IOFS_H__*/
