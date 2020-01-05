@@ -39,8 +39,20 @@ struct iofs_inode {
     };
 };
 
+
+struct  iofs_direntry {  // B-tree node
+    char name[32];
+    uint32_t  adr;       // sec no of file header
+    uint32_t  p;         // sec no of descendant in directory
+};
+
 struct iofs_superblock {
     uint32_t magic;
+    uint32_t m;
+    uint32_t p0;         //sec no of left descendant in directory
+    char fill[52];
+    struct DirEntry e[24]; 
+/*
     uint32_t version;
     uint64_t blocksize;
 
@@ -49,6 +61,8 @@ struct iofs_superblock {
 
     uint64_t data_block_table_size;
     uint64_t data_block_count;
+*/
+
 };
 
 static const uint64_t IOFS_SUPERBLOCK_BLOCK_NO = 0;
