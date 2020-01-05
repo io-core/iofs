@@ -86,7 +86,7 @@ static inline uint64_t IOFS_INODE_BYTE_OFFSET(struct super_block *sb, uint64_t i
 static inline uint64_t IOFS_DIR_MAX_RECORD(struct super_block *sb) {
     struct iofs_superblock *iofs_sb;
     iofs_sb = IOFS_SB(sb);
-    return iofs_sb->blocksize / sizeof(struct iofs_dir_record);
+    return 24; //iofs_sb->blocksize / sizeof(struct iofs_dir_record);
 }
 
 // From which block does data blocks start

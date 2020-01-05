@@ -51,7 +51,7 @@ struct iofs_superblock {
     uint32_t m;
     uint32_t p0;         //sec no of left descendant in directory
     char fill[52];
-    struct DirEntry e[24]; 
+    struct iofs_direntry e[24]; 
 /*
     uint32_t version;
     uint64_t blocksize;

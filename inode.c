@@ -53,13 +53,13 @@ int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no) {
 
     bitmap = bh->b_data;
     ret = -ENOSPC;
-    for (i = 0; i < iofs_sb->inode_table_size; i++) {
+    for (i = 0; i< 24; i++) { //i < iofs_sb->inode_table_size; i++) {
         slot = bitmap + i / BITS_IN_BYTE;
         needle = 1 << (i % BITS_IN_BYTE);
         if (0 == (*slot & needle)) {
             *out_inode_no = i;
             *slot |= needle;
-            iofs_sb->inode_count += 1;
+            // iofs_sb->inode_count += 1;
             ret = 0;
             break;
         }
@@ -157,14 +157,14 @@ int iofs_alloc_data_block(struct super_block *sb, uint64_t *out_data_block_no) {
 
     bitmap = bh->b_data;
     ret = -ENOSPC;
-    for (i = 0; i < iofs_sb->data_block_table_size; i++) {
+    for (i = 0; i < 24; i++) { // i < iofs_sb->data_block_table_size; i++) {
         slot = bitmap + i / BITS_IN_BYTE;
         needle = 1 << (i % BITS_IN_BYTE);
         if (0 == (*slot & needle)) {
             *out_data_block_no
                 = IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO(sb) + i;
             *slot |= needle;
-            iofs_sb->data_block_count += 1;
+            // iofs_sb->data_block_count += 1;
             ret = 0;
             break;
         }
@@ -196,8 +196,8 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
     if (0 != ret) {
         printk(KERN_ERR "Unable to allocate on-disk inode. "
                         "Is inode table full? "
-                        "Inode count: %llu\n",
-                        iofs_sb->inode_count);
+                        "Inode count: %u\n",
+                        0); // iofs_sb->inode_count);
         return -ENOSPC;
     }
     iofs_inode = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
@@ -218,8 +218,8 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
     if (0 != ret) {
         printk(KERN_ERR "Unable to allocate on-disk data block. "
                         "Is data block table full? "
-                        "Data block count: %llu\n",
-                        iofs_sb->data_block_count);
+                        "Data block count: %u\n",
+                        0); //iofs_sb->data_block_count);
         return -ENOSPC;
     }
 
