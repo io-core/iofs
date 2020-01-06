@@ -19,10 +19,17 @@ void iofs_destroy_inode(struct inode *inode) {
 
 void iofs_fill_inode(struct super_block *sb, struct inode *inode,
                         struct iofs_inode *iofs_inode) {
+
     if (((iofs_inode->origin >> 28) & 0xF) == IOFS_DIR) {
       inode->i_mode = 0040777; //octal
+        printk(KERN_WARNING
+               "iofs inode %u retrived, type %d (directory)",
+               iofs_inode->origin & 0x0FFFFFFF,((iofs_inode->origin >> 28) & 0xF) );
     }else{
       inode->i_mode = 0100777; //octal
+        printk(KERN_WARNING
+               "iofs inode %u retrived, type %d (file)",
+               iofs_inode->origin & 0x0FFFFFFF,((iofs_inode->origin >> 28) & 0xF) );
     }
     inode->i_sb = sb;
     inode->i_ino = iofs_inode->origin & 0x0FFFFFFF;
@@ -48,6 +55,7 @@ void iofs_fill_inode(struct super_block *sb, struct inode *inode,
 }
 
 /* TODO I didn't implement any function to dealloc iofs_inode */
+
 int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no) {
     struct iofs_superblock *iofs_sb;
     struct buffer_head *bh;
@@ -99,6 +107,15 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
     inode = (struct iofs_inode *)(bh->b_data);
     inode_buf = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
     memcpy(inode_buf, inode, sizeof(*inode_buf));
+
+    if (inode->origin == IOFS_DIRMARK) {
+      inode_buf->origin = IOFS_DIR << 28 | (uint32_t) inode_no;            
+    }else if(inode->origin == IOFS_HEADERMARK) {
+      inode_buf->origin = IOFS_REG << 28 | (uint32_t) inode_no;
+    }else{
+      // error
+    }
+ 
 
     brelse(bh);
     return inode_buf;

@@ -7,7 +7,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
     struct iofs_inode *iofs_inode;
     int ret = 0;
 
-    bh = sb_bread(sb, IOFS_SUPERBLOCK_BLOCK_NO);
+    bh = sb_bread(sb, 0); //IOFS_SUPERBLOCK_BLOCK_NO);
     BUG_ON(!bh);
 
     iofs_inode = (struct iofs_inode *)bh->b_data;
@@ -26,7 +26,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_maxbytes = 1024; 
     sb->s_op = &iofs_sb_ops;
 
-    root_iofs_inode = iofs_get_iofs_inode(sb, IOFS_SUPERBLOCK_BLOCK_NO); //IOFS_ROOTDIR_INODE_NO);
+    root_iofs_inode = iofs_get_iofs_inode(sb, 0); 
     root_inode = new_inode(sb);
     if (!root_inode || !root_iofs_inode) {
         ret = -ENOMEM;
