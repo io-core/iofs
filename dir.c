@@ -30,6 +30,7 @@ int iofs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 }
 
 int iofs_readdir(struct file *filp, void *dirent, filldir_t filldir) {
+/*
     loff_t pos;
     struct inode *inode;
     struct super_block *sb;
@@ -48,12 +49,12 @@ int iofs_readdir(struct file *filp, void *dirent, filldir_t filldir) {
         return 0;
     }
 
-    printk(KERN_INFO "readdir: iofs_inode->inode_no=%llu", iofs_inode->inode_no);
+    printk(KERN_INFO "readdir: iofs_inode->inode_no=%u", iofs_inode->origin & 0x0FFFFFFF);
 
-    if (unlikely(!S_ISDIR(iofs_inode->mode))) {
+    if (unlikely(!S_ISDIR(inode->i_mode))) {
         printk(KERN_ERR
                "Inode %llu of dentry %s is not a directory\n",
-               iofs_inode->inode_no,
+               iofs_inode->origin & 0x0FFFFFFF,
                filp->f_path.dentry->d_name.name);
         return -ENOTDIR;
     }
@@ -70,6 +71,6 @@ int iofs_readdir(struct file *filp, void *dirent, filldir_t filldir) {
         dir_record++;
     }
     brelse(bh);
-
+*/
     return 0;
 }

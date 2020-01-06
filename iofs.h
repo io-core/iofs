@@ -21,6 +21,13 @@
 #define IOFS_DIRPGSIZE 24
 #define IOFS_FILLERSIZE 52
 
+#define IOFS_DIR  0  /* directory */
+#define IOFS_CHR  1  /* char special */
+#define IOFS_BLK  2  /* block special */
+#define IOFS_REG  3  /* regular file */
+#define IOFS_FIFO 4  /* fifo */
+#define IOFS_LNK  5  /* symbolic link */
+#define IOFS_SOCK 6  /* socket */
 
 /* Define filesystem structures */
 
@@ -31,7 +38,7 @@ struct iofs_dir_record {
     uint64_t inode_no;
 };
 
-struct iofs_inode {
+struct iofs_oldinode {
     mode_t mode;         //u_short, unsigned short int
    
     uint64_t inode_no;
@@ -57,8 +64,8 @@ struct  iofs_direntry {  // B-tree node
 };
 
 
-struct iofs_undetblock {
-    uint32_t magic;      
+struct iofs_inode {
+    uint32_t origin;      
     char fill[1020];
 };
 

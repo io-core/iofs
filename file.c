@@ -2,6 +2,7 @@
 
 ssize_t iofs_read(struct file *filp, char __user *buf, size_t len,
                      loff_t *ppos) {
+/*
     struct super_block *sb;
     struct inode *inode;
     struct iofs_inode *iofs_inode;
@@ -37,6 +38,8 @@ ssize_t iofs_read(struct file *filp, char __user *buf, size_t len,
     brelse(bh);
     *ppos += nbytes;
     return nbytes;
+*/
+    return 0;
 }
 
 /* TODO We didn't use address_space/pagecache here.
@@ -45,6 +48,7 @@ ssize_t iofs_read(struct file *filp, char __user *buf, size_t len,
    we will use write to pagecache instead. */
 ssize_t iofs_write(struct file *filp, const char __user *buf, size_t len,
                       loff_t *ppos) {
+/*
     struct super_block *sb;
     struct inode *inode;
     struct iofs_inode *iofs_inode;
@@ -88,7 +92,10 @@ ssize_t iofs_write(struct file *filp, const char __user *buf, size_t len,
                                    (size_t)(*ppos));
     iofs_save_iofs_inode(sb, iofs_inode);
 
-    /* TODO We didn't update file size here. To be frank I don't know how. */
+    // TODO We didn't update file size here. To be frank I don't know how.
 
     return len;
+*/
+    return 0;
+
 }
