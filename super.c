@@ -1,38 +1,40 @@
 #include "kiofs.h"
 
 static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
-//    struct inode *root_inode;
-//    struct iofs_inode *root_iofs_inode;
+    struct inode *root_inode;
+    struct iofs_inode *root_iofs_inode;
     struct buffer_head *bh;
-    struct iofs_superblock *iofs_sb;
+//    struct iofs_superblock *iofs_sb;
+    struct iofs_inode *iofs_inode;
     int ret = 0;
 
     bh = sb_bread(sb, IOFS_SUPERBLOCK_BLOCK_NO);
     BUG_ON(!bh);
 
-    iofs_sb = (struct iofs_superblock *)bh->b_data;
-    if (unlikely(iofs_sb->magic != IOFS_MAGIC)) {
+    iofs_inode = (struct iofs_inode *)bh->b_data;
+    if (unlikely(iofs_inode->origin != IOFS_MAGIC)) {
         printk(KERN_ERR
                "The filesystem being mounted is not of type iofs. "
                "Magic number mismatch: %u != %u\n",
-               iofs_sb->magic, (uint32_t)IOFS_MAGIC);
+               iofs_inode->origin, (uint32_t)IOFS_MAGIC);
         ret = -ENOSYS;
         goto release;
     }
 
 
 
-    sb->s_magic = iofs_sb->magic;
-    sb->s_fs_info = iofs_sb;
+    sb->s_magic = iofs_inode->origin;
+//    sb->s_fs_info = iofs_inode;
     sb->s_maxbytes = 1024; 
     sb->s_op = &iofs_sb_ops;
-/*
-    root_iofs_inode = iofs_get_iofs_inode(sb, IOFS_ROOTDIR_INODE_NO);
+
+    root_iofs_inode = iofs_get_iofs_inode(sb, IOFS_SUPERBLOCK_BLOCK_NO); //IOFS_ROOTDIR_INODE_NO);
     root_inode = new_inode(sb);
     if (!root_inode || !root_iofs_inode) {
         ret = -ENOMEM;
         goto release;
     }
+
     iofs_fill_inode(sb, root_inode, root_iofs_inode);
     inode_init_owner(root_inode, NULL, root_inode->i_mode);
 
@@ -42,7 +44,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
         goto release;
     }
 
-*/
+
 
 release:
     brelse(bh);
