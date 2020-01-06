@@ -11,6 +11,15 @@
 #define IOFS_DIRMARK 0x9B1EA38D
 #define IOFS_HEADERMARK 0x9BA71D86
 
+#define IOFS_FNLENGTH 32
+#define IOFS_SECTABSIZE 64
+#define IOFS_EXTABSIZE 12
+#define IOFS_SECTORSIZE 1024
+#define IOFS_INDEXSIZE (IOFS_SECTORSIZE / 4)
+#define IOFS_HEADERSIZE 352
+#define IOFS_DIRROOTADR 29
+#define IOFS_DIRPGSIZE 24
+#define IOFS_FILLERSIZE 52
 
 
 /* Define filesystem structures */
@@ -23,7 +32,8 @@ struct iofs_dir_record {
 };
 
 struct iofs_inode {
-    mode_t mode;
+    mode_t mode;         //u_short, unsigned short int
+   
     uint64_t inode_no;
     uint64_t data_block_no;
 
@@ -41,16 +51,41 @@ struct iofs_inode {
 
 
 struct  iofs_direntry {  // B-tree node
-    char name[32];
+    char name[IOFS_FNLENGTH];
     uint32_t  adr;       // sec no of file header
     uint32_t  p;         // sec no of descendant in directory
 };
 
-struct iofs_superblock {
-    uint32_t magic;
+
+struct iofs_undetblock {
+    uint32_t magic;      
+    char fill[1020];
+};
+
+struct iofs_fhblock {    // file header
+    uint32_t origin;     // magic number on disk, inode type | sector number in memory
+    char name[IOFS_FNLENGTH];
+    uint32_t aleng;
+    uint32_t bleng;
+    uint32_t date;
+    uint32_t ext[IOFS_EXTABSIZE];                     // ExtensionTable
+    uint32_t sec[IOFS_SECTABSIZE];                    // SectorTable;
+    char fill[IOFS_SECTORSIZE - IOFS_HEADERSIZE];     // File Data
+};
+
+struct iofs_dpblock {    // directory page
+    uint32_t origin;     // magic number on disk, inode type | sector number in memory
     uint32_t m;
     uint32_t p0;         //sec no of left descendant in directory
-    char fill[52];
+    char fill[IOFS_FILLERSIZE];
+    struct iofs_direntry e[24];
+};
+
+struct iofs_superblock {
+    uint32_t magic;      
+    uint32_t m;
+    uint32_t p0;         //sec no of left descendant in directory
+    char fill[IOFS_FILLERSIZE];
     struct iofs_direntry e[24]; 
 /*
     uint32_t version;
