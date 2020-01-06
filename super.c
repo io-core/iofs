@@ -4,7 +4,6 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
     struct inode *root_inode;
     struct iofs_inode *root_iofs_inode;
     struct buffer_head *bh;
-//    struct iofs_superblock *iofs_sb;
     struct iofs_inode *iofs_inode;
     int ret = 0;
 
@@ -24,7 +23,6 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
 
 
     sb->s_magic = iofs_inode->origin;
-//    sb->s_fs_info = iofs_inode;
     sb->s_maxbytes = 1024; 
     sb->s_op = &iofs_sb_ops;
 
