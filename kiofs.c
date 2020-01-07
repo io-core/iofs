@@ -1,6 +1,7 @@
 #include "kiofs.h"
 
 DEFINE_MUTEX(iofs_sb_lock);
+DEFINE_MUTEX(iofs_d_lock);
 
 struct file_system_type iofs_fs_type = {
     .owner = THIS_MODULE,

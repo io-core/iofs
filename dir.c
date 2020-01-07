@@ -2,7 +2,7 @@
 #include <linux/vfs.h>
 
 
-int iofs_iterate_shared(struct file *filp, struct dir_context *ctx) {  // *filp, *dc
+int iofs_iterate_shared(struct file *filp, struct dir_context *dc) { 
 	struct inode *inode;
 	struct iofs_inode *iofs_inode;
 	struct super_block *sb;
@@ -14,7 +14,7 @@ int iofs_iterate_shared(struct file *filp, struct dir_context *ctx) {  // *filp,
 
 	mutex_lock(&iofs_d_lock);
 
-	cpos = ctx->pos;
+	cpos = dc->pos;
 	inode = filp->f_path.dentry->d_inode;
 	sb = inode->i_sb;
 
