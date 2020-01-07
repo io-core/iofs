@@ -32,6 +32,7 @@
 /* Define filesystem structures */
 
 extern struct mutex iofs_sb_lock;
+extern struct mutex iofs_d_lock;
 
 struct iofs_dir_record {
     char filename[IOFS_FILENAME_MAXLEN];

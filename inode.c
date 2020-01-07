@@ -22,18 +22,14 @@ void iofs_fill_inode(struct super_block *sb, struct inode *inode,
 
     if (((iofs_inode->origin >> 28) & 0xF) == IOFS_DIR) {
       inode->i_mode = 0040777; //octal
-        printk(KERN_WARNING
-               "iofs inode %u retrived, type %d (directory)",
-               iofs_inode->origin & 0x0FFFFFFF,((iofs_inode->origin >> 28) & 0xF) );
     }else{
       inode->i_mode = 0100777; //octal
-        printk(KERN_WARNING
-               "iofs inode %u retrived, type %d (file)",
-               iofs_inode->origin & 0x0FFFFFFF,((iofs_inode->origin >> 28) & 0xF) );
     }
+
     inode->i_sb = sb;
     inode->i_ino = iofs_inode->origin & 0x0FFFFFFF;
     inode->i_op = &iofs_inode_ops;
+
     // TODO hope we can use iofs_inode to store timespec
   //  inode->i_atime = inode->i_mtime 
   //                 = inode->i_ctime 
@@ -116,7 +112,6 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
       // error
     }
  
-
     brelse(bh);
     return inode_buf;
 }

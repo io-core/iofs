@@ -1,8 +1,35 @@
 #include "kiofs.h"
 #include <linux/vfs.h>
 
-int iofs_iterate_shared(struct file *filp, struct dir_context *dc) {
-	return 0;
+
+int iofs_iterate_shared(struct file *filp, struct dir_context *ctx) {  // *filp, *dc
+	struct inode *inode;
+	struct iofs_inode *iofs_inode;
+	struct super_block *sb;
+	struct buffer_head *bh;
+	loff_t cpos;
+//	unsigned char nr_slots = 24;
+
+	int ret = 0;
+
+	mutex_lock(&iofs_d_lock);
+
+	cpos = ctx->pos;
+	inode = filp->f_path.dentry->d_inode;
+	sb = inode->i_sb;
+
+	bh = sb_bread(sb, inode->i_ino);
+	BUG_ON(!bh);
+
+	iofs_inode = (struct iofs_inode *)bh->b_data;
+
+	printk(KERN_INFO "readdir: iofs_inode->origin=%u", iofs_inode->origin & 0x0FFFFFFF);
+
+	mutex_unlock(&iofs_d_lock);
+
+	brelse(bh);
+	return ret;
+
 }
 
 int iofs_statfs(struct dentry *dentry, struct kstatfs *buf) {
