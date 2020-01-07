@@ -25,6 +25,10 @@ int iofs_iterate_shared(struct file *filp, struct dir_context *dc) {
 
 	printk(KERN_INFO "readdir: iofs_inode->origin=%u", iofs_inode->origin & 0x0FFFFFFF);
 
+	dc->pos = 2;
+	dir_emit_dot(filp, dc);
+	dir_emit_dotdot(filp, dc);
+
 	mutex_unlock(&iofs_d_lock);
 
 	brelse(bh);
