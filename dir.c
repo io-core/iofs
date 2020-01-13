@@ -2,37 +2,52 @@
 #include <linux/vfs.h>
 
 
-int iofs_iterate_shared(struct file *filp, struct dir_context *dc) { 
-	struct inode *inode;
-	struct iofs_inode *iofs_inode;
-	struct super_block *sb;
-	struct buffer_head *bh;
-	loff_t cpos;
-//	unsigned char nr_slots = 24;
 
+int iofs_read_dirpage(struct super_block *sb, uint32_t ino) {
+        struct iofs_dpblock *dirpage;
+        struct buffer_head *bh;
+        int i;
 	int ret = 0;
 
-	mutex_lock(&iofs_d_lock);
+        bh = sb_bread(sb, (ino/29) - 1);
+        BUG_ON(!bh);
 
-	cpos = dc->pos;
+        dirpage = (struct iofs_dpblock *)bh->b_data;
+        printk(KERN_INFO "examining directory page:%u", ino/29);
+
+        if (dirpage->origin == IOFS_DIRMARK) {
+
+	  if (dirpage->p0 != 0 && (dirpage->p0 != ino) ){
+	      i = iofs_read_dirpage(sb,dirpage->p0);
+	  }
+          printk(KERN_INFO "readdir directory page:%u", ino);
+          for( i=0; i < dirpage->m; i++){
+             dirpage->e[1].name[31]=0;
+             printk(KERN_INFO "        %d:%u:%u %s", i, dirpage->e[i].adr/29, dirpage->e[i].p/29, dirpage->e[i].name);
+//             if (dirpage->e[i].p != 0 && (dirpage->e[i].p != ino )){
+//                 i = iofs_read_dirpage(sb,dirpage->e[i].p);
+//             }
+          }
+
+        }
+        brelse(bh);
+	return ret;
+}
+
+int iofs_iterate_shared(struct file *filp, struct dir_context *dc) { 
+	struct inode *inode;
+
+	struct super_block *sb;
+	int i;
+
+	mutex_lock(&iofs_d_lock);
 	inode = filp->f_path.dentry->d_inode;
 	sb = inode->i_sb;
 
-	bh = sb_bread(sb, inode->i_ino);
-	BUG_ON(!bh);
-
-	iofs_inode = (struct iofs_inode *)bh->b_data;
-
-	printk(KERN_INFO "readdir: iofs_inode->origin=%u", iofs_inode->origin & 0x0FFFFFFF);
-
-	dc->pos = 2;
-	dir_emit_dot(filp, dc);
-	dir_emit_dotdot(filp, dc);
+	i = iofs_read_dirpage(sb,inode->i_ino*29);
 
 	mutex_unlock(&iofs_d_lock);
-
-	brelse(bh);
-	return ret;
+	return 0;
 
 }
 

@@ -26,7 +26,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_maxbytes = 1024; 
     sb->s_op = &iofs_sb_ops;
 
-    root_iofs_inode = iofs_get_iofs_inode(sb, 0); 
+    root_iofs_inode = iofs_get_iofs_inode(sb, 1); 
     root_inode = new_inode(sb);
     if (!root_inode || !root_iofs_inode) {
         ret = -ENOMEM;

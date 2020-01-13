@@ -97,7 +97,7 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
     struct iofs_inode *inode;
     struct iofs_inode *inode_buf;
 
-    bh = sb_bread(sb, inode_no);
+    bh = sb_bread(sb, inode_no - 1);
     BUG_ON(!bh);
     
     inode = (struct iofs_inode *)(bh->b_data);
