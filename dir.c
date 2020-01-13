@@ -3,7 +3,7 @@
 
 
 
-int iofs_read_dirpage(struct super_block *sb, uint32_t ino) {
+int iofs_read_dirpage(struct super_block *sb, uint32_t ino, int depth) {
         struct iofs_dpblock *dirpage;
         struct buffer_head *bh;
         int i;
@@ -18,18 +18,22 @@ int iofs_read_dirpage(struct super_block *sb, uint32_t ino) {
         if (dirpage->origin == IOFS_DIRMARK) {
 
 	  if (dirpage->p0 != 0 && (dirpage->p0 != ino) ){
-	      i = iofs_read_dirpage(sb,dirpage->p0);
+	      i = iofs_read_dirpage(sb,dirpage->p0, depth + 1);
 	  }
           printk(KERN_INFO "readdir directory page:%u", ino);
           for( i=0; i < dirpage->m; i++){
              dirpage->e[1].name[31]=0;
              printk(KERN_INFO "        %d:%u:%u %s", i, dirpage->e[i].adr/29, dirpage->e[i].p/29, dirpage->e[i].name);
-//             if (dirpage->e[i].p != 0 && (dirpage->e[i].p != ino )){
-//                 i = iofs_read_dirpage(sb,dirpage->e[i].p);
-//             }
+             if ( depth < 10 && dirpage->e[i].p != 0 && (dirpage->e[i].p != ino )){
+                 i = iofs_read_dirpage(sb,dirpage->e[i].p, depth + 1);
+             }
           }
 
-        }
+        }else{
+
+          printk(KERN_INFO "no IOFS_DIRMARK on sector #%u", ino/29);
+
+	}
         brelse(bh);
 	return ret;
 }
@@ -44,7 +48,7 @@ int iofs_iterate_shared(struct file *filp, struct dir_context *dc) {
 	inode = filp->f_path.dentry->d_inode;
 	sb = inode->i_sb;
 
-	i = iofs_read_dirpage(sb,inode->i_ino*29);
+	i = iofs_read_dirpage(sb,inode->i_ino*29,1);
 
 	mutex_unlock(&iofs_d_lock);
 	return 0;
