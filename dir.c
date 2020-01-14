@@ -4,36 +4,61 @@
 
 
 int iofs_read_dirpage(struct super_block *sb, uint32_t ino, int depth) {
+        struct iofs_inode *inode;
         struct iofs_dpblock *dirpage;
         struct buffer_head *bh;
         int i;
+        
+       
+        uint32_t down;
 	int ret = 0;
+
+        printk(KERN_INFO "examining directory page:%u (%d)", ino/29, depth);
+
+        
+        
 
         bh = sb_bread(sb, (ino/29) - 1);
         BUG_ON(!bh);
 
-        dirpage = (struct iofs_dpblock *)bh->b_data;
-        printk(KERN_INFO "examining directory page:%u", ino/29);
 
-        if (dirpage->origin == IOFS_DIRMARK) {
+        inode = (struct iofs_inode *)bh->b_data;
+        dirpage = &(inode->dirb);
+       
 
-	  if (dirpage->p0 != 0 && (dirpage->p0 != ino) ){
-	      i = iofs_read_dirpage(sb,dirpage->p0, depth + 1);
-	  }
-          printk(KERN_INFO "readdir directory page:%u", ino);
-          for( i=0; i < dirpage->m; i++){
-             dirpage->e[1].name[31]=0;
-             printk(KERN_INFO "        %d:%u:%u %s", i, dirpage->e[i].adr/29, dirpage->e[i].p/29, dirpage->e[i].name);
-             if ( depth < 10 && dirpage->e[i].p != 0 && (dirpage->e[i].p != ino )){
-                 i = iofs_read_dirpage(sb,dirpage->e[i].p, depth + 1);
+
+  if (depth < 2){
+
+
+        if (inode->origin == IOFS_DIRMARK) {
+          printk(KERN_INFO "readdir directory page:%u (%d)", ino/29, depth);
+          for( i=0; i <= dirpage->m; i++){
+             down = 0;
+             if (i == 0) {
+               down = dirpage->p0;
+             }else{
+               down = dirpage->e[i-1].p;
+               dirpage->e[i-1].name[31]=0;
+               printk(KERN_INFO "        %8d:%8u:%8u %s", i, dirpage->e[i-1].adr/29, dirpage->e[i-1].p/29, dirpage->e[i-1].name);
+             }
+             if ( down != 0 && (down % 29 == 0)) {
+//               ret = iofs_read_dirpage(sb, down, depth + 1);
              }
           }
 
-        }else{
+        }else if (inode->origin == IOFS_HEADERMARK) {
 
-          printk(KERN_INFO "no IOFS_DIRMARK on sector #%u", ino/29);
+          printk(KERN_INFO "found IOFS_HEADERMARK on sector #%u (%d)", ino/29, depth);
+
+	}else{
+
+          printk(KERN_INFO "no IOFS_DIRMARK or IOFS_HEADERMARK on sector #%u (%d)", ino/29, depth);
+
+
 
 	}
+
+   }
         brelse(bh);
 	return ret;
 }

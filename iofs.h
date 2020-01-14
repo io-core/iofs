@@ -65,13 +65,7 @@ struct  iofs_direntry {  // B-tree node
 };
 
 
-struct iofs_inode {
-    uint32_t origin;      
-    char fill[1020];
-};
-
 struct iofs_fhblock {    // file header
-    uint32_t origin;     // magic number on disk, inode type | sector number in memory
     char name[IOFS_FNLENGTH];
     uint32_t aleng;
     uint32_t bleng;
@@ -82,7 +76,6 @@ struct iofs_fhblock {    // file header
 };
 
 struct iofs_dpblock {    // directory page
-    uint32_t origin;     // magic number on disk, inode type | sector number in memory
     uint32_t m;
     uint32_t p0;         //sec no of left descendant in directory
     char fill[IOFS_FILLERSIZE];
@@ -91,21 +84,15 @@ struct iofs_dpblock {    // directory page
 
 struct iofs_superblock {
     uint32_t magic;      
-    uint32_t m;
-    uint32_t p0;         //sec no of left descendant in directory
-    char fill[IOFS_FILLERSIZE];
-    struct iofs_direntry e[24]; 
-/*
-    uint32_t version;
-    uint64_t blocksize;
+    struct iofs_dpblock dirb;
+};
 
-    uint64_t inode_table_size;
-    uint64_t inode_count;
-
-    uint64_t data_block_table_size;
-    uint64_t data_block_count;
-*/
-
+struct iofs_inode {
+    uint32_t origin;     // magic number on disk, inode type | sector number in memory
+    union {
+       struct iofs_fhblock fhb;
+       struct iofs_dpblock dirb;
+    };
 };
 
 static const uint64_t IOFS_SUPERBLOCK_BLOCK_NO = 0;
