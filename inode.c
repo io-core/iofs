@@ -104,6 +104,7 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
     inode_buf = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
     memcpy(inode_buf, inode, sizeof(*inode_buf));
 
+/*
     if (inode->origin == IOFS_DIRMARK) {
       inode_buf->origin = IOFS_DIR << 28 | (uint32_t) inode_no;            
     }else if(inode->origin == IOFS_HEADERMARK) {
@@ -111,7 +112,8 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
     }else{
       // error
     }
- 
+*/
+
     brelse(bh);
     return inode_buf;
 }

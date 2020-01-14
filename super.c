@@ -11,6 +11,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
     BUG_ON(!bh);
 
     iofs_inode = (struct iofs_inode *)bh->b_data;
+
     if (unlikely(iofs_inode->origin != IOFS_MAGIC)) {
         printk(KERN_ERR
                "The filesystem being mounted is not of type iofs. "
@@ -28,11 +29,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
 
     root_iofs_inode = iofs_get_iofs_inode(sb, 1); 
     root_inode = new_inode(sb);
-    if (!root_inode || !root_iofs_inode) {
-        ret = -ENOMEM;
-        goto release;
-    }
-
+    if (!root_inode || !root_iofs_inode) {  ret = -ENOMEM; goto release; }
     iofs_fill_inode(sb, root_inode, root_iofs_inode);
     inode_init_owner(root_inode, NULL, root_inode->i_mode);
 
