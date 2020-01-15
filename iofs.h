@@ -95,6 +95,19 @@ struct iofs_inode {
     };
 };
 
+struct iofs_inode_info {
+	union {
+		__u16 i1_data[16];
+		__u32 i2_data[16];
+	} u;
+	struct inode vfs_inode;
+};
+
+static inline struct iofs_inode_info *iofs_i(struct inode *inode)
+{
+	return container_of(inode, struct iofs_inode_info, vfs_inode);
+}
+
 static const uint64_t IOFS_SUPERBLOCK_BLOCK_NO = 0;
 static const uint64_t IOFS_INODE_BITMAP_BLOCK_NO = 1;
 static const uint64_t IOFS_DATA_BLOCK_BITMAP_BLOCK_NO = 2;

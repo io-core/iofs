@@ -18,16 +18,16 @@ void iofs_destroy_inode(struct inode *inode) {
 
 
 void iofs_fill_inode(struct super_block *sb, struct inode *inode,
-                        struct iofs_inode *iofs_inode) {
+                        struct iofs_inode *iofs_inode, int ino) {
 
-    if (((iofs_inode->origin >> 28) & 0xF) == IOFS_DIR) {
+    if (iofs_inode->origin == IOFS_DIRMARK) {
       inode->i_mode = 0040777; //octal
     }else{
       inode->i_mode = 0100777; //octal
     }
 
     inode->i_sb = sb;
-    inode->i_ino = iofs_inode->origin & 0x0FFFFFFF;
+    inode->i_ino = ino;
     inode->i_op = &iofs_inode_ops;
 
     // TODO hope we can use iofs_inode to store timespec
@@ -103,16 +103,6 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
     inode = (struct iofs_inode *)(bh->b_data);
     inode_buf = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
     memcpy(inode_buf, inode, sizeof(*inode_buf));
-
-/*
-    if (inode->origin == IOFS_DIRMARK) {
-      inode_buf->origin = IOFS_DIR << 28 | (uint32_t) inode_no;            
-    }else if(inode->origin == IOFS_HEADERMARK) {
-      inode_buf->origin = IOFS_REG << 28 | (uint32_t) inode_no;
-    }else{
-      // error
-    }
-*/
 
     brelse(bh);
     return inode_buf;

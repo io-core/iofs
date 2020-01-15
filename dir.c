@@ -7,6 +7,8 @@ int iofs_read_dirpage(struct super_block *sb, uint32_t ino, int depth) {
         struct iofs_inode *inode;
         struct iofs_dpblock *dirpage;
         struct buffer_head *bh;
+//        struct iofs_inode *iofs_child_inode;
+//        struct inode *child_inode;
         int i;
         
        
@@ -43,6 +45,15 @@ int iofs_read_dirpage(struct super_block *sb, uint32_t ino, int depth) {
              }
              if ( down != 0 && (down % 29 == 0)) {
 //               ret = iofs_read_dirpage(sb, down, depth + 1);
+
+//                 iofs_child_inode = iofs_get_iofs_inode(sb, down);
+//                 child_inode = new_inode(sb);
+//                 if (!child_inode) {
+//                     printk(KERN_ERR "Cannot create new inode. No memory.\n");
+//                     return NULL;
+//                 }
+//                 iofs_fill_inode(sb, child_inode, iofs_child_inode, down);
+//                 inode_init_owner(child_inode, dir, iofs_child_inode->mode);
              }
           }
 
