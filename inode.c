@@ -184,6 +184,8 @@ int iofs_alloc_data_block(struct super_block *sb, uint64_t *out_data_block_no) {
 
 int iofs_create_inode(struct inode *dir, struct dentry *dentry,
                          umode_t mode) {
+/*
+
     struct super_block *sb;
     struct iofs_superblock *iofs_sb;
     uint64_t inode_no;
@@ -194,7 +196,7 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
     sb = dir->i_sb;
     iofs_sb = IOFS_SB(sb);
 
-    /* Create iofs_inode */
+    // Create iofs_inode 
     ret = iofs_alloc_iofs_inode(sb, &inode_no);
     if (0 != ret) {
         printk(KERN_ERR "Unable to allocate on-disk inode. "
@@ -216,7 +218,7 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
                inode_no);
     }
 
-    /* Allocate data block for the new iofs_inode */
+    // Allocate data block for the new iofs_inode 
     ret = iofs_alloc_data_block(sb, &iofs_inode->data_block_no);
     if (0 != ret) {
         printk(KERN_ERR "Unable to allocate on-disk data block. "
@@ -226,14 +228,14 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
         return -ENOSPC;
     }
 
-    /* Create VFS inode */
+    // Create VFS inode 
     inode = new_inode(sb);
     if (!inode) {
         return -ENOMEM;
     }
     iofs_fill_inode(sb, inode, iofs_inode);
 
-    /* Add new inode to parent dir */
+    // Add new inode to parent dir 
     ret = iofs_add_dir_record(sb, dir, dentry, inode);
     if (0 != ret) {
         printk(KERN_ERR "Failed to add inode %lu to parent dir %lu\n",
@@ -244,8 +246,8 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
     inode_init_owner(inode, dir, mode);
     d_add(dentry, inode);
 
-    /* TODO we should free newly allocated inodes when error occurs */
-
+    // TODO we should free newly allocated inodes when error occurs 
+*/
     return 0;
 }
 
