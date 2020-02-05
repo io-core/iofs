@@ -3,6 +3,32 @@
 static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
     struct inode *root_inode;
     struct iofs_inode *root_iofs_inode;
+    int ret = 0;
+
+    sb->s_magic = (uint32_t)IOFS_MAGIC;
+    sb->s_maxbytes = 1024; 
+    sb->s_op = &iofs_sb_ops;
+
+    root_iofs_inode = iofs_get_iofs_inode(sb, 1); 
+    root_inode = new_inode(sb);
+    if (!root_inode || !root_iofs_inode) {
+      ret = -ENOMEM; 
+      goto release;
+    }
+    iofs_fill_inode(sb, root_inode, root_iofs_inode);
+    inode_init_owner(root_inode, NULL, root_inode->i_mode);
+
+    sb->s_root = d_make_root(root_inode);
+    if (!sb->s_root) {
+        ret = -ENOMEM;
+        goto release;
+    }
+release:
+    return ret;
+
+/*
+    struct inode *root_inode;
+    struct iofs_inode *root_iofs_inode;
     struct buffer_head *bh;
     struct iofs_superblock *iofs_sb;
     int ret = 0;
@@ -47,6 +73,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
 release:
     brelse(bh);
     return ret;
+*/
 }
 
 struct dentry *iofs_mount(struct file_system_type *fs_type,
@@ -76,14 +103,5 @@ void iofs_put_super(struct super_block *sb) {
 }
 
 void iofs_save_sb(struct super_block *sb) {
-    struct buffer_head *bh;
-    struct iofs_superblock *iofs_sb = IOFS_SB(sb);
-
-    bh = sb_bread(sb, IOFS_SUPERBLOCK_BLOCK_NO);
-    BUG_ON(!bh);
-
-    bh->b_data = (char *)iofs_sb;
-    mark_buffer_dirty(bh);
-    sync_dirty_buffer(bh);
-    brelse(bh);
+    return;
 }
