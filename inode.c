@@ -36,8 +36,9 @@ void iofs_fill_inode(struct super_block *sb, struct inode *inode,
     }
 }
 
-/* TODO I didn't implement any function to dealloc iofs_inode */
+
 int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no) {
+/*
     struct iofs_superblock *iofs_sb;
     struct buffer_head *bh;
     uint64_t i;
@@ -74,6 +75,8 @@ int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no) {
 
     mutex_unlock(&iofs_sb_lock);
     return ret;
+*/
+    return -ENOSPC;
 }
 
 struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
