@@ -1,6 +1,7 @@
 #include "kiofs.h"
 
 int iofs_iterate_shared(struct file *filp, struct dir_context *dc) {
+/*
     struct inode *inode;
 
     struct super_block *sb;
@@ -45,6 +46,6 @@ int iofs_iterate_shared(struct file *filp, struct dir_context *dc) {
 
     brelse(bh);
 out:
-
+*/
     return 0;
 }
