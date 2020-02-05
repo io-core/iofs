@@ -40,13 +40,8 @@ struct dentry *iofs_lookup(struct inode *parent_inode,
                                unsigned int flags);
 int iofs_mkdir(struct inode *dir, struct dentry *dentry,
                    umode_t mode);
-int iofs_iterate(struct file *filp, struct dir_context *dc);
 
-int iofs_iterate_shared(struct file *filp, struct dir_context *dc);
-
-int iofs_statfs(struct dentry *dentry, struct kstatfs *buf);
-
-int iofs_readdir(struct file *filp, void *dirent, filldir_t filldir);
+int iofs_iterate_shared(struct file *filp, struct dir_context *dc);  
 
 ssize_t iofs_read(struct file * filp, char __user * buf, size_t len,
                       loff_t * ppos);
@@ -86,7 +81,7 @@ static inline uint64_t IOFS_INODE_BYTE_OFFSET(struct super_block *sb, uint64_t i
 static inline uint64_t IOFS_DIR_MAX_RECORD(struct super_block *sb) {
     struct iofs_superblock *iofs_sb;
     iofs_sb = IOFS_SB(sb);
-    return 24; //iofs_sb->blocksize / sizeof(struct iofs_dir_record);
+    return iofs_sb->blocksize / sizeof(struct iofs_dir_record);
 }
 
 // From which block does data blocks start
@@ -100,7 +95,7 @@ void iofs_save_sb(struct super_block *sb);
 
 // functions to operate inode
 void iofs_fill_inode(struct super_block *sb, struct inode *inode,
-                        struct iofs_inode *iofs_inode, int ino);
+                        struct iofs_inode *iofs_inode);
 int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no);
 struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
                                                 uint64_t inode_no);

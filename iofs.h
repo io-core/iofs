@@ -2,46 +2,23 @@
 #define __IOFS_H__
 
 #define BITS_IN_BYTE 8
-#define IOFS_MAGIC 0x9b1ea38d  // [ 141 163 30 155 ] 8D A3 1E 9B -- Oberon Directory Mark
-#define IOFS_DEFAULT_BLOCKSIZE 1024 // 4096
-#define IOFS_DEFAULT_INODE_TABLE_SIZE 256 // 1024
-#define IOFS_DEFAULT_DATA_BLOCK_TABLE_SIZE 256 // 1024
-#define IOFS_FILENAME_MAXLEN 63
-
-#define IOFS_DIRMARK 0x9B1EA38D
-#define IOFS_HEADERMARK 0x9BA71D86
-
-#define IOFS_FNLENGTH 32
-#define IOFS_SECTABSIZE 64
-#define IOFS_EXTABSIZE 12
-#define IOFS_SECTORSIZE 1024
-#define IOFS_INDEXSIZE (IOFS_SECTORSIZE / 4)
-#define IOFS_HEADERSIZE 352
-#define IOFS_DIRROOTADR 29
-#define IOFS_DIRPGSIZE 24
-#define IOFS_FILLERSIZE 52
-
-#define IOFS_DIR  0  /* directory */
-#define IOFS_CHR  1  /* char special */
-#define IOFS_BLK  2  /* block special */
-#define IOFS_REG  3  /* regular file */
-#define IOFS_FIFO 4  /* fifo */
-#define IOFS_LNK  5  /* symbolic link */
-#define IOFS_SOCK 6  /* socket */
+#define IOFS_MAGIC 0x20160105
+#define IOFS_DEFAULT_BLOCKSIZE 4096
+#define IOFS_DEFAULT_INODE_TABLE_SIZE 1024
+#define IOFS_DEFAULT_DATA_BLOCK_TABLE_SIZE 1024
+#define IOFS_FILENAME_MAXLEN 255
 
 /* Define filesystem structures */
 
 extern struct mutex iofs_sb_lock;
-extern struct mutex iofs_d_lock;
 
 struct iofs_dir_record {
     char filename[IOFS_FILENAME_MAXLEN];
     uint64_t inode_no;
 };
 
-struct iofs_oldinode {
-    mode_t mode;         //u_short, unsigned short int
-   
+struct iofs_inode {
+    mode_t mode;
     uint64_t inode_no;
     uint64_t data_block_no;
 
@@ -57,56 +34,17 @@ struct iofs_oldinode {
     };
 };
 
-
-struct  iofs_direntry {  // B-tree node
-    char name[IOFS_FNLENGTH];
-    uint32_t  adr;       // sec no of file header
-    uint32_t  p;         // sec no of descendant in directory
-};
-
-
-struct iofs_fhblock {    // file header
-    char name[IOFS_FNLENGTH];
-    uint32_t aleng;
-    uint32_t bleng;
-    uint32_t date;
-    uint32_t ext[IOFS_EXTABSIZE];                     // ExtensionTable
-    uint32_t sec[IOFS_SECTABSIZE];                    // SectorTable;
-    char fill[IOFS_SECTORSIZE - IOFS_HEADERSIZE];     // File Data
-};
-
-struct iofs_dpblock {    // directory page
-    uint32_t m;
-    uint32_t p0;         //sec no of left descendant in directory
-    char fill[IOFS_FILLERSIZE];
-    struct iofs_direntry e[24];
-};
-
 struct iofs_superblock {
-    uint32_t magic;      
-    struct iofs_dpblock dirb;
-};
+    uint64_t version;
+    uint64_t magic;
+    uint64_t blocksize;
 
-struct iofs_inode {
-    uint32_t origin;     // magic number on disk, inode type | sector number in memory
-    union {
-       struct iofs_fhblock fhb;
-       struct iofs_dpblock dirb;
-    };
-};
+    uint64_t inode_table_size;
+    uint64_t inode_count;
 
-struct iofs_inode_info {
-	union {
-		__u16 i1_data[16];
-		__u32 i2_data[16];
-	} u;
-	struct inode vfs_inode;
+    uint64_t data_block_table_size;
+    uint64_t data_block_count;
 };
-
-static inline struct iofs_inode_info *iofs_i(struct inode *inode)
-{
-	return container_of(inode, struct iofs_inode_info, vfs_inode);
-}
 
 static const uint64_t IOFS_SUPERBLOCK_BLOCK_NO = 0;
 static const uint64_t IOFS_INODE_BITMAP_BLOCK_NO = 1;
@@ -122,14 +60,14 @@ static const uint64_t IOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET = 0;
 
 static inline uint64_t IOFS_INODES_PER_BLOCK_HSB(
         struct iofs_superblock *iofs_sb) {
-    return 24; //iofs_sb->blocksize / sizeof(struct iofs_inode);
+    return iofs_sb->blocksize / sizeof(struct iofs_inode);
 }
 
 static inline uint64_t IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(
         struct iofs_superblock *iofs_sb) {
-    return 1; //IOFS_INODE_TABLE_START_BLOCK_NO
-         //  + iofs_sb->inode_table_size / IOFS_INODES_PER_BLOCK_HSB(iofs_sb)
-         //  + 1;
+    return IOFS_INODE_TABLE_START_BLOCK_NO
+           + iofs_sb->inode_table_size / IOFS_INODES_PER_BLOCK_HSB(iofs_sb)
+           + 1;
 }
 
 #endif /*__IOFS_H__*/

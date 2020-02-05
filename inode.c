@@ -8,37 +8,21 @@ void iofs_destroy_inode(struct inode *inode) {
     kmem_cache_free(iofs_inode_cache, iofs_inode);
 }
 
-//#define	S_ISDIR(m)	((m & 0170000) == 0040000)	/* directory */
-//#define	S_ISCHR(m)	((m & 0170000) == 0020000)	/* char special */
-//#define	S_ISBLK(m)	((m & 0170000) == 0060000)	/* block special */
-//#define	S_ISREG(m)	((m & 0170000) == 0100000)	/* regular file */
-//#define	S_ISFIFO(m)	((m & 0170000) == 0010000)	/* fifo */
-//#define	S_ISLNK(m)	((m & 0170000) == 0120000)	/* symbolic link */
-//#define	S_ISSOCK(m)	((m & 0170000) == 0140000)	/* socket */
-
-
 void iofs_fill_inode(struct super_block *sb, struct inode *inode,
-                        struct iofs_inode *iofs_inode, int ino) {
-
-    if (iofs_inode->origin == IOFS_DIRMARK) {
-      inode->i_mode = 0040777; //octal
-    }else{
-      inode->i_mode = 0100777; //octal
-    }
-
+                        struct iofs_inode *iofs_inode) {
+    inode->i_mode = iofs_inode->mode;
     inode->i_sb = sb;
-    inode->i_ino = ino;
+    inode->i_ino = iofs_inode->inode_no;
     inode->i_op = &iofs_inode_ops;
-
     // TODO hope we can use iofs_inode to store timespec
-  //  inode->i_atime = inode->i_mtime 
-  //                 = inode->i_ctime 
-  //                 = CURRENT_TIME;
+    inode->i_atime = inode->i_mtime 
+                   = inode->i_ctime
+                   = current_time(inode);
     inode->i_private = iofs_inode;    
     
-    if (S_ISDIR(inode->i_mode)) {
+    if (S_ISDIR(iofs_inode->mode)) {
         inode->i_fop = &iofs_dir_operations;
-    } else if (S_ISREG(inode->i_mode)) {
+    } else if (S_ISREG(iofs_inode->mode)) {
         inode->i_fop = &iofs_file_operations;
     } else {
         printk(KERN_WARNING
@@ -51,7 +35,6 @@ void iofs_fill_inode(struct super_block *sb, struct inode *inode,
 }
 
 /* TODO I didn't implement any function to dealloc iofs_inode */
-
 int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no) {
     struct iofs_superblock *iofs_sb;
     struct buffer_head *bh;
@@ -70,13 +53,13 @@ int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no) {
 
     bitmap = bh->b_data;
     ret = -ENOSPC;
-    for (i = 0; i< 24; i++) { //i < iofs_sb->inode_table_size; i++) {
+    for (i = 0; i < iofs_sb->inode_table_size; i++) {
         slot = bitmap + i / BITS_IN_BYTE;
         needle = 1 << (i % BITS_IN_BYTE);
         if (0 == (*slot & needle)) {
             *out_inode_no = i;
             *slot |= needle;
-            // iofs_sb->inode_count += 1;
+            iofs_sb->inode_count += 1;
             ret = 0;
             break;
         }
@@ -97,10 +80,10 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
     struct iofs_inode *inode;
     struct iofs_inode *inode_buf;
 
-    bh = sb_bread(sb, inode_no - 1);
+    bh = sb_bread(sb, IOFS_INODE_TABLE_START_BLOCK_NO + IOFS_INODE_BLOCK_OFFSET(sb, inode_no));
     BUG_ON(!bh);
     
-    inode = (struct iofs_inode *)(bh->b_data);
+    inode = (struct iofs_inode *)(bh->b_data + IOFS_INODE_BYTE_OFFSET(sb, inode_no));
     inode_buf = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
     memcpy(inode_buf, inode, sizeof(*inode_buf));
 
@@ -110,33 +93,24 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
 
 void iofs_save_iofs_inode(struct super_block *sb,
                                 struct iofs_inode *inode_buf) {
-/*
     struct buffer_head *bh;
     struct iofs_inode *inode;
     uint64_t inode_no;
 
-    inode_no = inode_buf->origin & 0x0FFFFFFF; //inode_no;
-    if (((inode_buf->origin >>28) & 0xF ) == IOFS_DIR){
-
-    }else{
-
-    }
-
-    bh = sb_bread(sb, inode_no); //IOFS_INODE_TABLE_START_BLOCK_NO + IOFS_INODE_BLOCK_OFFSET(sb, inode_no));
+    inode_no = inode_buf->inode_no;
+    bh = sb_bread(sb, IOFS_INODE_TABLE_START_BLOCK_NO + IOFS_INODE_BLOCK_OFFSET(sb, inode_no));
     BUG_ON(!bh);
 
-    inode = (struct iofs_inode *)(bh->b_data); // + IOFS_INODE_BYTE_OFFSET(sb, inode_no));
+    inode = (struct iofs_inode *)(bh->b_data + IOFS_INODE_BYTE_OFFSET(sb, inode_no));
     memcpy(inode, inode_buf, sizeof(*inode));
 
     mark_buffer_dirty(bh);
     sync_dirty_buffer(bh);
     brelse(bh);
-*/
 }
 
 int iofs_add_dir_record(struct super_block *sb, struct inode *dir,
                            struct dentry *dentry, struct inode *inode) {
-/*
     struct buffer_head *bh;
     struct iofs_inode *parent_iofs_inode;
     struct iofs_dir_record *dir_record;
@@ -161,7 +135,7 @@ int iofs_add_dir_record(struct super_block *sb, struct inode *dir,
 
     parent_iofs_inode->dir_children_count += 1;
     iofs_save_iofs_inode(sb, parent_iofs_inode);
-*/
+
     return 0;
 }
 
@@ -183,14 +157,14 @@ int iofs_alloc_data_block(struct super_block *sb, uint64_t *out_data_block_no) {
 
     bitmap = bh->b_data;
     ret = -ENOSPC;
-    for (i = 0; i < 24; i++) { // i < iofs_sb->data_block_table_size; i++) {
+    for (i = 0; i < iofs_sb->data_block_table_size; i++) {
         slot = bitmap + i / BITS_IN_BYTE;
         needle = 1 << (i % BITS_IN_BYTE);
         if (0 == (*slot & needle)) {
             *out_data_block_no
                 = IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO(sb) + i;
             *slot |= needle;
-            // iofs_sb->data_block_count += 1;
+            iofs_sb->data_block_count += 1;
             ret = 0;
             break;
         }
@@ -207,7 +181,6 @@ int iofs_alloc_data_block(struct super_block *sb, uint64_t *out_data_block_no) {
 
 int iofs_create_inode(struct inode *dir, struct dentry *dentry,
                          umode_t mode) {
-/*
     struct super_block *sb;
     struct iofs_superblock *iofs_sb;
     uint64_t inode_no;
@@ -218,13 +191,13 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
     sb = dir->i_sb;
     iofs_sb = IOFS_SB(sb);
 
-    // Create iofs_inode 
+    /* Create iofs_inode */
     ret = iofs_alloc_iofs_inode(sb, &inode_no);
     if (0 != ret) {
         printk(KERN_ERR "Unable to allocate on-disk inode. "
                         "Is inode table full? "
-                        "Inode count: %u\n",
-                        0); // iofs_sb->inode_count);
+                        "Inode count: %llu\n",
+                        iofs_sb->inode_count);
         return -ENOSPC;
     }
     iofs_inode = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
@@ -240,24 +213,24 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
                inode_no);
     }
 
-    // Allocate data block for the new iofs_inode 
+    /* Allocate data block for the new iofs_inode */
     ret = iofs_alloc_data_block(sb, &iofs_inode->data_block_no);
     if (0 != ret) {
         printk(KERN_ERR "Unable to allocate on-disk data block. "
                         "Is data block table full? "
-                        "Data block count: %u\n",
-                        0); //iofs_sb->data_block_count);
+                        "Data block count: %llu\n",
+                        iofs_sb->data_block_count);
         return -ENOSPC;
     }
 
-    // Create VFS inode 
+    /* Create VFS inode */
     inode = new_inode(sb);
     if (!inode) {
         return -ENOMEM;
     }
     iofs_fill_inode(sb, inode, iofs_inode);
 
-    // Add new inode to parent dir 
+    /* Add new inode to parent dir */
     ret = iofs_add_dir_record(sb, dir, dentry, inode);
     if (0 != ret) {
         printk(KERN_ERR "Failed to add inode %lu to parent dir %lu\n",
@@ -268,11 +241,9 @@ int iofs_create_inode(struct inode *dir, struct dentry *dentry,
     inode_init_owner(inode, dir, mode);
     d_add(dentry, inode);
 
-    // TODO we should free newly allocated inodes when error occurs 
+    /* TODO we should free newly allocated inodes when error occurs */
 
     return 0;
-    */
-    return -ENOSPC;
 }
 
 int iofs_create(struct inode *dir, struct dentry *dentry,
@@ -291,7 +262,6 @@ int iofs_mkdir(struct inode *dir, struct dentry *dentry,
 struct dentry *iofs_lookup(struct inode *dir,
                               struct dentry *child_dentry,
                               unsigned int flags) {
-/*
     struct iofs_inode *parent_iofs_inode = IOFS_INODE(dir);
     struct super_block *sb = dir->i_sb;
     struct buffer_head *bh;
@@ -321,7 +291,7 @@ struct dentry *iofs_lookup(struct inode *dir,
         }
         dir_record++;
     }
-*/
+
     printk(KERN_ERR
            "No inode found for the filename: %s\n",
            child_dentry->d_name.name);
