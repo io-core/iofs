@@ -267,6 +267,8 @@ int iofs_mkdir(struct inode *dir, struct dentry *dentry,
 struct dentry *iofs_lookup(struct inode *dir,
                               struct dentry *child_dentry,
                               unsigned int flags) {
+
+/*
     struct iofs_inode *parent_iofs_inode = IOFS_INODE(dir);
     struct super_block *sb = dir->i_sb;
     struct buffer_head *bh;
@@ -300,5 +302,7 @@ struct dentry *iofs_lookup(struct inode *dir,
     printk(KERN_ERR
            "No inode found for the filename: %s\n",
            child_dentry->d_name.name);
+*/
+
     return NULL;
 }
