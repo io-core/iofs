@@ -9,20 +9,24 @@ void iofs_destroy_inode(struct inode *inode) {
 }
 
 void iofs_fill_inode(struct super_block *sb, struct inode *inode,
-                        struct iofs_inode *iofs_inode) {
-    inode->i_mode = iofs_inode->mode;
+                        struct iofs_inode *iofs_inode, int ino) {
+
+    if (iofs_inode->origin == IOFS_DIRMARK) {
+      inode->i_mode = 0040777; //octal
+    }else{
+      inode->i_mode = 0100777; //octal
+    }
     inode->i_sb = sb;
-    inode->i_ino = iofs_inode->inode_no;
+    inode->i_ino = ino;
     inode->i_op = &iofs_inode_ops;
-    // TODO hope we can use iofs_inode to store timespec
     inode->i_atime = inode->i_mtime 
                    = inode->i_ctime
                    = current_time(inode);
     inode->i_private = iofs_inode;    
     
-    if (S_ISDIR(iofs_inode->mode)) {
+    if (S_ISDIR(inode->i_mode)) {
         inode->i_fop = &iofs_dir_operations;
-    } else if (S_ISREG(iofs_inode->mode)) {
+    } else if (S_ISREG(inode->i_mode)) {
         inode->i_fop = &iofs_file_operations;
     } else {
         printk(KERN_WARNING
@@ -30,8 +34,6 @@ void iofs_fill_inode(struct super_block *sb, struct inode *inode,
                inode->i_ino);
         inode->i_fop = NULL;
     }
-
-    /* TODO iofs_inode->file_size seems not reflected in inode */
 }
 
 /* TODO I didn't implement any function to dealloc iofs_inode */
@@ -92,12 +94,12 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
 }
 
 void iofs_save_iofs_inode(struct super_block *sb,
-                                struct iofs_inode *inode_buf) {
+                                struct iofs_inode *inode_buf, int ino) {
     struct buffer_head *bh;
     struct iofs_inode *inode;
     uint64_t inode_no;
 
-    inode_no = inode_buf->inode_no;
+    inode_no = ino;
     bh = sb_bread(sb, IOFS_INODE_TABLE_START_BLOCK_NO + IOFS_INODE_BLOCK_OFFSET(sb, inode_no));
     BUG_ON(!bh);
 
@@ -111,12 +113,13 @@ void iofs_save_iofs_inode(struct super_block *sb,
 
 int iofs_add_dir_record(struct super_block *sb, struct inode *dir,
                            struct dentry *dentry, struct inode *inode) {
+/*
     struct buffer_head *bh;
     struct iofs_inode *parent_iofs_inode;
     struct iofs_dir_record *dir_record;
 
     parent_iofs_inode = IOFS_INODE(dir);
-    if (unlikely(parent_iofs_inode->dir_children_count
+    if (unlikely(parent_iofs_inode->dirb.m
             >= IOFS_DIR_MAX_RECORD(sb))) {
         return -ENOSPC;
     }
@@ -125,7 +128,7 @@ int iofs_add_dir_record(struct super_block *sb, struct inode *dir,
     BUG_ON(!bh);
 
     dir_record = (struct iofs_dir_record *)bh->b_data;
-    dir_record += parent_iofs_inode->dir_children_count;
+    dir_record += parent_iofs_inode->dirb.m;
     dir_record->inode_no = inode->i_ino;
     strcpy(dir_record->filename, dentry->d_name.name);
 
@@ -134,8 +137,8 @@ int iofs_add_dir_record(struct super_block *sb, struct inode *dir,
     brelse(bh);
 
     parent_iofs_inode->dir_children_count += 1;
-    iofs_save_iofs_inode(sb, parent_iofs_inode);
-
+    iofs_save_iofs_inode(sb, parent_iofs_inode, inode->i_ino);
+*/
     return 0;
 }
 

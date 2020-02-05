@@ -95,7 +95,7 @@ void iofs_save_sb(struct super_block *sb);
 
 // functions to operate inode
 void iofs_fill_inode(struct super_block *sb, struct inode *inode,
-                        struct iofs_inode *iofs_inode);
+                        struct iofs_inode *iofs_inode, int ino);
 int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no);
 struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
                                                 uint64_t inode_no);

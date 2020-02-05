@@ -67,8 +67,8 @@ struct iofs_dir_record {
 struct iofs_inode {
     uint32_t origin;     // magic number on disk, inode type | sector number in memory
     union {
-       struct iofs_fhblock fhb;
-       struct iofs_dpblock dirb;
+       struct iofs_fh fhb;
+       struct iofs_dp dirb;
     };
 };
 

@@ -15,7 +15,7 @@ static int iofs_fill_super(struct super_block *sb, void *data, int silent) {
       ret = -ENOMEM; 
       goto release;
     }
-    iofs_fill_inode(sb, root_inode, root_iofs_inode);
+    iofs_fill_inode(sb, root_inode, root_iofs_inode, 1);
     inode_init_owner(root_inode, NULL, root_inode->i_mode);
 
     sb->s_root = d_make_root(root_inode);
