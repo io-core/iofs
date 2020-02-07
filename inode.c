@@ -105,7 +105,7 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
         }
     
 
-	set_nlink(inode, be16_to_cpu(iofs_inode->di_nlink));
+//	set_nlink(inode, be16_to_cpu(iofs_inode->di_nlink));
 //	i_uid_write(inode, (uid_t)be16_to_cpu(iofs_inode->di_uid));
 //	i_gid_write(inode, (gid_t)be16_to_cpu(iofs_inode->di_gid));
 
@@ -116,9 +116,9 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 //	inode->i_ctime.tv_sec = be32_to_cpu(iofs_inode->di_ctime);
 //	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
 
-        inode->i_sb = sb;
-        inode->i_ino = ino;
-        inode->i_op = &iofs_inode_ops;
+//        inode->i_sb = super;
+//        inode->i_ino = ino;
+//        inode->i_op = &iofs_inode_ops;
         inode->i_atime = inode->i_mtime 
                    = inode->i_ctime
                    = current_time(inode);
@@ -178,9 +178,9 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 			break;
 		case S_IFCHR:
 		case S_IFBLK:
-		case S_IFIFO:
-			init_special_inode(inode, inode->i_mode, device);
-			break;
+//		case S_IFIFO:
+//			init_special_inode(inode, inode->i_mode, device);
+//			break;
 		default:
 			pr_warn("unsupported inode mode %o\n", inode->i_mode);
 			goto read_inode_error;

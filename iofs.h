@@ -22,6 +22,18 @@
 #define IOFS_DIRMARK 0x9B1EA38D
 #define IOFS_HEADERMARK 0x9BA71D86
 
+#define IOFS_FNLENGTH 32
+#define IOFS_SECTABSIZE 64
+#define IOFS_EXTABSIZE 12
+#define IOFS_SECTORSIZE 1024
+#define IOFS_INDEXSIZE (IOFS_SECTORSIZE / 4)
+#define IOFS_HEADERSIZE 352
+#define IOFS_DIRROOTADR 29
+#define IOFS_DIRPGSIZE 24
+#define IOFS_FILLERSIZE 52
+#define IOFS_FILENAME_MAXLEN 63
+
+
 static const char cprt[] = "IOFS: "IOFS_VERSION"  ";
 
 
@@ -56,7 +68,48 @@ typedef struct edevs {
  * extent based filesystem inode as it appears on disk.  The efs inode
  * is exactly 128 bytes long.
  */
-struct	iofs_dinode {
+
+struct  iofs_de {  // directory entry B-tree node
+    char name[IOFS_FNLENGTH];
+    uint32_t  adr;       // sec no of file header
+    uint32_t  p;         // sec no of descendant in directory
+}__attribute__((packed));
+
+
+struct iofs_fh {    // file header
+    char name[IOFS_FNLENGTH];
+    uint32_t aleng;
+    uint32_t bleng;
+    uint32_t date;
+    uint32_t ext[IOFS_EXTABSIZE];                     // ExtensionTable
+    uint32_t sec[IOFS_SECTABSIZE];                    // SectorTable;
+    char fill[IOFS_SECTORSIZE - IOFS_HEADERSIZE];     // File Data
+}__attribute__((packed));
+
+struct iofs_dp {    // directory page
+    uint32_t m;
+    uint32_t p0;         //sec no of left descendant in directory
+    char fill[IOFS_FILLERSIZE];
+    struct iofs_de e[24];
+}__attribute__((packed));
+
+
+struct iofs_dir_record {
+    char filename[IOFS_FILENAME_MAXLEN];
+    uint64_t inode_no;
+}__attribute__((packed));
+
+struct iofs_dinode {
+    uint32_t origin;     // magic number on disk, inode type | sector number in memory
+    union {
+       struct iofs_fh fhb;
+       struct iofs_dp dirb;
+    };
+    struct inode vfs_inode;
+}__attribute__((packed));
+
+
+struct	old_iofs_dinode {
 	__be16		di_mode;	/* mode and type of file */
 	__be16		di_nlink;	/* number of links to file */
 	__be16		di_uid;		/* owner's user id */
