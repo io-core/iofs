@@ -2,9 +2,10 @@
 /*
  * super.c
  *
- * Copyright (c) 1999 Al Smith
+ * Copyright (c) 2020 Charles Perkins
  *
- * Portions derived from work (c) 1995,1996 Christian Vogelgsang.
+ * Portions derived from work (c) 1999 Al Smith
+ * Portions derived from work (c) 1995,1996 Christian Vogelgsang
  */
 
 #include <linux/init.h>
@@ -36,7 +37,7 @@ static void iofs_kill_sb(struct super_block *s)
 
 static struct file_system_type iofs_fs_type = {
 	.owner		= THIS_MODULE,
-	.name		= "efs",
+	.name		= "iofs",
 	.mount		= iofs_mount,
 	.kill_sb	= iofs_kill_sb,
 	.fs_flags	= FS_REQUIRES_DEV,
@@ -123,7 +124,6 @@ static int iofs_remount(struct super_block *sb, int *flags, char *data)
 static const struct super_operations iofs_superblock_operations = {
 	.alloc_inode	= iofs_alloc_inode,
 	.destroy_inode  = iofs_destroy_inode,
-//	.free_inode	= iofs_free_inode,
 	.statfs		= iofs_statfs,
 	.remount_fs	= iofs_remount,
 };
@@ -136,7 +136,7 @@ static const struct export_operations iofs_export_ops = {
 
 static int __init init_iofs_fs(void) {
 	int err;
-	pr_info(IOFS_VERSION".");
+	pr_info(IOFS_VERSION);
 	err = init_inodecache();
 	if (err)
 		goto out1;
