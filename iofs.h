@@ -18,9 +18,9 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 
-#define EFS_VERSION "1.0a"
+#define IOFS_VERSION "2013a"
 
-static const char cprt[] = "EFS: "EFS_VERSION" - (c) 1999 Al Smith <Al.Smith@aeschi.ch.eu.org>";
+static const char cprt[] = "IOFS: "IOFS_VERSION"  ";
 
 
 /* 1 block is 512 bytes */
