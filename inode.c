@@ -48,9 +48,9 @@ static inline void extent_copy(iofs_extent *src, iofs_extent *dst) {
 
 struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 {
-/*
+
 	int i, inode_index;
-	dev_t device;
+//	dev_t device;
 	u32 rdev;
 	struct buffer_head *bh;
 	struct iofs_sb_info    *sb = SUPER_INFO(super);
@@ -78,7 +78,7 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 	// number of that inode given the above layout, and finally the
 	// offset of the inode within that block.
 	
-
+/*
 	inode_index = inode->i_ino /
 		(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
 
@@ -89,32 +89,49 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 	offset = (inode->i_ino %
 			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode))) *
 		sizeof(struct iofs_dinode);
-
-	bh = sb_bread(inode->i_sb, block);
+*/
+	bh = sb_bread(inode->i_sb, inode->i_ino/29 -1);
 	if (!bh) {
 		pr_warn("%s() failed at block %d\n", __func__, block);
 		goto read_inode_error;
 	}
 
-	iofs_inode = (struct iofs_dinode *) (bh->b_data + offset);
+	iofs_inode = (struct iofs_dinode *) (bh->b_data); // + offset);
+
+        if (iofs_inode->origin == IOFS_DIRMARK) {
+          inode->i_mode = 0040777; //octal
+        }else{
+          inode->i_mode = 0100777; //octal
+        }
     
-	inode->i_mode  = be16_to_cpu(iofs_inode->di_mode);
+
 	set_nlink(inode, be16_to_cpu(iofs_inode->di_nlink));
-	i_uid_write(inode, (uid_t)be16_to_cpu(iofs_inode->di_uid));
-	i_gid_write(inode, (gid_t)be16_to_cpu(iofs_inode->di_gid));
-	inode->i_size  = be32_to_cpu(iofs_inode->di_size);
-	inode->i_atime.tv_sec = be32_to_cpu(iofs_inode->di_atime);
-	inode->i_mtime.tv_sec = be32_to_cpu(iofs_inode->di_mtime);
-	inode->i_ctime.tv_sec = be32_to_cpu(iofs_inode->di_ctime);
-	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
+//	i_uid_write(inode, (uid_t)be16_to_cpu(iofs_inode->di_uid));
+//	i_gid_write(inode, (gid_t)be16_to_cpu(iofs_inode->di_gid));
 
-	// this is the number of blocks in the file 
-	if (inode->i_size == 0) {
+	inode->i_size  = 0;  //be32_to_cpu(iofs_inode->di_size);
+
+//	inode->i_atime.tv_sec = be32_to_cpu(iofs_inode->di_atime);
+//	inode->i_mtime.tv_sec = be32_to_cpu(iofs_inode->di_mtime);
+//	inode->i_ctime.tv_sec = be32_to_cpu(iofs_inode->di_ctime);
+//	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
+
+        inode->i_sb = sb;
+        inode->i_ino = ino;
+        inode->i_op = &iofs_inode_ops;
+        inode->i_atime = inode->i_mtime 
+                   = inode->i_ctime
+                   = current_time(inode);
+
+
+//	// this is the number of blocks in the file 
+//	if (inode->i_size == 0) {
 		inode->i_blocks = 0;
-	} else {
-		inode->i_blocks = ((inode->i_size - 1) >> IOFS_BLOCKSIZE_BITS) + 1;
-	}
+//	} else {
+//		inode->i_blocks = ((inode->i_size - 1) >> IOFS_BLOCKSIZE_BITS) + 1;
+//	}
 
+/*
 	rdev = be16_to_cpu(iofs_inode->di_u.di_dev.odev);
 	if (rdev == 0xffff) {
 		rdev = be32_to_cpu(iofs_inode->di_u.di_dev.ndev);
@@ -139,10 +156,12 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 			goto read_inode_error;
 		}
 	}
-
+*/
 	brelse(bh);
-	pr_debug("iofs_iget(): inode %lu, extents %d, mode %o\n",
-		 inode->i_ino, in->numextents, inode->i_mode);
+	pr_debug("iofs_iget(): inode %lu, mode %o\n",
+		 inode->i_ino, inode->i_mode);
+//        pr_debug("iofs_iget(): inode %lu, extents %d, mode %o\n",
+//                 inode->i_ino, in->numextents, inode->i_mode);
 	switch (inode->i_mode & S_IFMT) {
 		case S_IFDIR: 
 			inode->i_op = &iofs_dir_inode_operations; 
@@ -174,7 +193,7 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 read_inode_error:
 	pr_warn("failed to read inode %lu\n", inode->i_ino);
 	iget_failed(inode);
-*/
+
 	return ERR_PTR(-EIO);
 }
 

@@ -20,8 +20,7 @@
 
 #define IS_IOFS_MAGIC(x)	((x == IOFS_MAGIC) || (x == IOFS_NEWMAGIC))
 
-#define IOFS_SUPER		1
-#define IOFS_ROOTINODE		2
+#define IOFS_ROOTINODE		29
 
 /* iofs superblock on disk */
 struct iofs_super {

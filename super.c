@@ -290,19 +290,19 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 		return -EINVAL;
 	}
 	brelse(bh);
-
+/*
 	if (!sb_rdonly(s)) {
-#ifdef DEBUG
+//#ifdef DEBUG
 		pr_info("forcing read-only mode\n");
-#endif
+//#endif
 		s->s_flags |= SB_RDONLY;
 	}
-
+*/
 	s->s_op   = &iofs_superblock_operations;
 	s->s_export_op = &iofs_export_ops;
 	root = iofs_iget(s, IOFS_ROOTINODE);
 	if (IS_ERR(root)) {
-		pr_err("get root inode failed\n");
+		pr_err("get root inode (%d) failed\n",IOFS_ROOTINODE);
 		return PTR_ERR(root);
 	}
 

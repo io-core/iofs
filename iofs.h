@@ -19,6 +19,8 @@
 #include <linux/uaccess.h>
 
 #define IOFS_VERSION "2013a"
+#define IOFS_DIRMARK 0x9B1EA38D
+#define IOFS_HEADERMARK 0x9BA71D86
 
 static const char cprt[] = "IOFS: "IOFS_VERSION"  ";
 
