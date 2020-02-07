@@ -16,6 +16,7 @@
 
 static iofs_ino_t iofs_find_entry(struct inode *inode, const char *name, int len)
 {
+/*
 	struct buffer_head *bh;
 
 	int			slot, namelen;
@@ -60,6 +61,7 @@ static iofs_ino_t iofs_find_entry(struct inode *inode, const char *name, int len
 		}
 		brelse(bh);
 	}
+*/
 	return 0;
 }
 
