@@ -26,12 +26,12 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 	efs_block_t		block;
 	int			slot;
 
-	if (inode->i_size & (EFS_DIRBSIZE-1))
-		pr_warn("%s(): directory size not a multiple of EFS_DIRBSIZE\n",
+	if (inode->i_size & (IOFS_DIRBSIZE-1))
+		pr_warn("%s(): directory size not a multiple of IOFS_DIRBSIZE\n",
 			__func__);
 
 	/* work out where this entry can be found */
-	block = ctx->pos >> EFS_DIRBSIZE_BITS;
+	block = ctx->pos >> IOFS_DIRBSIZE_BITS;
 
 	/* each block contains at most 256 slots */
 	slot  = ctx->pos & 0xff;
@@ -52,7 +52,7 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 
 		dirblock = (struct efs_dir *) bh->b_data; 
 
-		if (be16_to_cpu(dirblock->magic) != EFS_DIRBLK_MAGIC) {
+		if (be16_to_cpu(dirblock->magic) != IOFS_DIRBLK_MAGIC) {
 			pr_err("%s(): invalid directory block\n", __func__);
 			brelse(bh);
 			break;
@@ -67,7 +67,7 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 			if (dirblock->space[slot] == 0)
 				continue;
 
-			dirslot  = (struct efs_dentry *) (((char *) bh->b_data) + EFS_SLOTAT(dirblock, slot));
+			dirslot  = (struct efs_dentry *) (((char *) bh->b_data) + IOFS_SLOTAT(dirblock, slot));
 
 			inodenum = be32_to_cpu(dirslot->inode);
 			namelen  = dirslot->namelen;
@@ -78,10 +78,10 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 			if (!namelen)
 				continue;
 			/* found the next entry */
-			ctx->pos = (block << EFS_DIRBSIZE_BITS) | slot;
+			ctx->pos = (block << IOFS_DIRBSIZE_BITS) | slot;
 
 			/* sanity check */
-			if (nameptr - (char *) dirblock + namelen > EFS_DIRBSIZE) {
+			if (nameptr - (char *) dirblock + namelen > IOFS_DIRBSIZE) {
 				pr_warn("directory entry %d exceeds directory block\n",
 					slot);
 				continue;
@@ -98,6 +98,6 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 		slot = 0;
 		block++;
 	}
-	ctx->pos = (block << EFS_DIRBSIZE_BITS) | slot;
+	ctx->pos = (block << IOFS_DIRBSIZE_BITS) | slot;
 	return 0;
 }

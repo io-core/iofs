@@ -6,8 +6,8 @@
  * Portions derived from work (c) 1995,1996 Christian Vogelgsang
  * Portions derived from IRIX header files (c) 1988 Silicon Graphics
  */
-#ifndef _IOFS_EFS_H_
-#define _IOFS_EFS_H_
+#ifndef _IOFS_IOFS_H_
+#define _IOFS_IOFS_H_
 
 #ifdef pr_fmt
 #undef pr_fmt
@@ -24,13 +24,13 @@ static const char cprt[] = "IOFS: "IOFS_VERSION"  ";
 
 
 /* 1 block is 512 bytes */
-#define	EFS_BLOCKSIZE_BITS	9
-#define	EFS_BLOCKSIZE		(1 << EFS_BLOCKSIZE_BITS)
+#define	IOFS_BLOCKSIZE_BITS	9
+#define	IOFS_BLOCKSIZE		(1 << IOFS_BLOCKSIZE_BITS)
 
 typedef	int32_t		efs_block_t;
 typedef uint32_t	efs_ino_t;
 
-#define	EFS_DIRECTEXTENTS	12
+#define	IOFS_DIRECTEXTENTS	12
 
 /*
  * layout of an extent, in memory and on disk. 8 bytes exactly.
@@ -68,7 +68,7 @@ struct	efs_dinode {
 	u_char		di_version;	/* version of inode */
 	u_char		di_spare;	/* spare - used by AFS */
 	union di_addr {
-		efs_extent	di_extents[EFS_DIRECTEXTENTS];
+		efs_extent	di_extents[IOFS_DIRECTEXTENTS];
 		efs_devs	di_dev;	/* device for IFCHR/IFBLK */
 	} di_u;
 };
@@ -78,14 +78,14 @@ struct efs_inode_info {
 	int		numextents;
 	int		lastextent;
 
-	efs_extent	extents[EFS_DIRECTEXTENTS];
+	efs_extent	extents[IOFS_DIRECTEXTENTS];
 	struct inode	vfs_inode;
 };
 
-#include <linux/efs_fs_sb.h>
+#include "iofs_fs_sb.h"
 
-#define EFS_DIRBSIZE_BITS	EFS_BLOCKSIZE_BITS
-#define EFS_DIRBSIZE		(1 << EFS_DIRBSIZE_BITS)
+#define IOFS_DIRBSIZE_BITS	IOFS_BLOCKSIZE_BITS
+#define IOFS_DIRBSIZE		(1 << IOFS_DIRBSIZE_BITS)
 
 struct efs_dentry {
 	__be32		inode;
@@ -93,27 +93,27 @@ struct efs_dentry {
 	char		name[3];
 };
 
-#define EFS_DENTSIZE	(sizeof(struct efs_dentry) - 3 + 1)
-#define EFS_MAXNAMELEN  ((1 << (sizeof(char) * 8)) - 1)
+#define IOFS_DENTSIZE	(sizeof(struct efs_dentry) - 3 + 1)
+#define IOFS_MAXNAMELEN  ((1 << (sizeof(char) * 8)) - 1)
 
-#define EFS_DIRBLK_HEADERSIZE	4
-#define EFS_DIRBLK_MAGIC	0xbeef	/* moo */
+#define IOFS_DIRBLK_HEADERSIZE	4
+#define IOFS_DIRBLK_MAGIC	0xbeef	/* moo */
 
 struct efs_dir {
 	__be16	magic;
 	unsigned char	firstused;
 	unsigned char	slots;
 
-	unsigned char	space[EFS_DIRBSIZE - EFS_DIRBLK_HEADERSIZE];
+	unsigned char	space[IOFS_DIRBSIZE - IOFS_DIRBLK_HEADERSIZE];
 };
 
-#define EFS_MAXENTS \
-	((EFS_DIRBSIZE - EFS_DIRBLK_HEADERSIZE) / \
-	 (EFS_DENTSIZE + sizeof(char)))
+#define IOFS_MAXENTS \
+	((IOFS_DIRBSIZE - IOFS_DIRBLK_HEADERSIZE) / \
+	 (IOFS_DENTSIZE + sizeof(char)))
 
-#define EFS_SLOTAT(dir, slot) EFS_REALOFF((dir)->space[slot])
+#define IOFS_SLOTAT(dir, slot) IOFS_REALOFF((dir)->space[slot])
 
-#define EFS_REALOFF(offset) ((offset << 1))
+#define IOFS_REALOFF(offset) ((offset << 1))
 
 
 static inline struct efs_inode_info *INODE_INFO(struct inode *inode)
@@ -121,7 +121,7 @@ static inline struct efs_inode_info *INODE_INFO(struct inode *inode)
 	return container_of(inode, struct efs_inode_info, vfs_inode);
 }
 
-static inline struct efs_sb_info *SUPER_INFO(struct super_block *sb)
+static inline struct iofs_sb_info *SUPER_INFO(struct super_block *sb)
 {
 	return sb->s_fs_info;
 }
@@ -145,4 +145,4 @@ extern struct dentry *efs_fh_to_parent(struct super_block *sb, struct fid *fid,
 extern struct dentry *efs_get_parent(struct dentry *);
 extern int efs_bmap(struct inode *, int);
 
-#endif /* _IOFS_EFS_H_ */
+#endif /* _IOFS_IOFS_H_ */

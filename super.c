@@ -16,7 +16,7 @@
 
 #include "iofs.h"
 #include <linux/efs_vh.h>
-#include <linux/efs_fs_sb.h>
+#include "iofs_fs_sb.h"
 
 static int efs_statfs(struct dentry *dentry, struct kstatfs *buf);
 static int efs_fill_super(struct super_block *s, void *d, int silent);
@@ -29,7 +29,7 @@ static struct dentry *efs_mount(struct file_system_type *fs_type,
 
 static void efs_kill_sb(struct super_block *s)
 {
-	struct efs_sb_info *sbi = SUPER_INFO(s);
+	struct iofs_sb_info *sbi = SUPER_INFO(s);
 	kill_block_super(s);
 	kfree(sbi);
 }
@@ -136,7 +136,7 @@ static const struct export_operations efs_export_ops = {
 
 static int __init init_efs_fs(void) {
 	int err;
-	pr_info(EFS_VERSION" - http://aeschi.ch.eu.org/efs/\n");
+	pr_info(IOFS_VERSION".");
 	err = init_inodecache();
 	if (err)
 		goto out1;
@@ -237,9 +237,9 @@ static efs_block_t efs_validate_vh(struct volume_header *vh) {
 	return sblock;
 }
 
-static int efs_validate_super(struct efs_sb_info *sb, struct efs_super *super) {
+static int efs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super) {
 
-	if (!IS_EFS_MAGIC(be32_to_cpu(super->fs_magic)))
+	if (!IS_IOFS_MAGIC(be32_to_cpu(super->fs_magic)))
 		return -1;
 
 	sb->fs_magic     = be32_to_cpu(super->fs_magic);
@@ -256,19 +256,19 @@ static int efs_validate_super(struct efs_sb_info *sb, struct efs_super *super) {
 
 static int efs_fill_super(struct super_block *s, void *d, int silent)
 {
-	struct efs_sb_info *sb;
+	struct iofs_sb_info *sb;
 	struct buffer_head *bh;
 	struct inode *root;
 
- 	sb = kzalloc(sizeof(struct efs_sb_info), GFP_KERNEL);
+ 	sb = kzalloc(sizeof(struct iofs_sb_info), GFP_KERNEL);
 	if (!sb)
 		return -ENOMEM;
 	s->s_fs_info = sb;
  
-	s->s_magic		= EFS_SUPER_MAGIC;
-	if (!sb_set_blocksize(s, EFS_BLOCKSIZE)) {
+	s->s_magic		= IOFS_SUPER_MAGIC;
+	if (!sb_set_blocksize(s, IOFS_BLOCKSIZE)) {
 		pr_err("device does not support %d byte blocks\n",
-			EFS_BLOCKSIZE);
+			IOFS_BLOCKSIZE);
 		return -EINVAL;
 	}
   
@@ -292,16 +292,16 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 		return -EINVAL;
 	}
 
-	bh = sb_bread(s, sb->fs_start + EFS_SUPER);
+	bh = sb_bread(s, sb->fs_start + IOFS_SUPER);
 	if (!bh) {
 		pr_err("cannot read superblock\n");
 		return -EIO;
 	}
 		
-	if (efs_validate_super(sb, (struct efs_super *) bh->b_data)) {
+	if (efs_validate_super(sb, (struct iofs_super *) bh->b_data)) {
 #ifdef DEBUG
 		pr_warn("invalid superblock at block %u\n",
-			sb->fs_start + EFS_SUPER);
+			sb->fs_start + IOFS_SUPER);
 #endif
 		brelse(bh);
 		return -EINVAL;
@@ -316,7 +316,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 	}
 	s->s_op   = &efs_superblock_operations;
 	s->s_export_op = &efs_export_ops;
-	root = efs_iget(s, EFS_ROOTINODE);
+	root = efs_iget(s, IOFS_ROOTINODE);
 	if (IS_ERR(root)) {
 		pr_err("get root inode failed\n");
 		return PTR_ERR(root);
@@ -333,22 +333,22 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 
 static int efs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 	struct super_block *sb = dentry->d_sb;
-	struct efs_sb_info *sbi = SUPER_INFO(sb);
+	struct iofs_sb_info *sbi = SUPER_INFO(sb);
 	u64 id = huge_encode_dev(sb->s_bdev->bd_dev);
 
-	buf->f_type    = EFS_SUPER_MAGIC;	/* efs magic number */
-	buf->f_bsize   = EFS_BLOCKSIZE;		/* blocksize */
+	buf->f_type    = IOFS_SUPER_MAGIC;	/* efs magic number */
+	buf->f_bsize   = IOFS_BLOCKSIZE;		/* blocksize */
 	buf->f_blocks  = sbi->total_groups *	/* total data blocks */
 			(sbi->group_size - sbi->inode_blocks);
 	buf->f_bfree   = sbi->data_free;	/* free data blocks */
 	buf->f_bavail  = sbi->data_free;	/* free blocks for non-root */
 	buf->f_files   = sbi->total_groups *	/* total inodes */
 			sbi->inode_blocks *
-			(EFS_BLOCKSIZE / sizeof(struct efs_dinode));
+			(IOFS_BLOCKSIZE / sizeof(struct efs_dinode));
 	buf->f_ffree   = sbi->inode_free;	/* free inodes */
 	buf->f_fsid.val[0] = (u32)id;
 	buf->f_fsid.val[1] = (u32)(id >> 32);
-	buf->f_namelen = EFS_MAXNAMELEN;	/* max filename length */
+	buf->f_namelen = IOFS_MAXNAMELEN;	/* max filename length */
 
 	return 0;
 }
