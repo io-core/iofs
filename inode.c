@@ -54,7 +54,7 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 	struct iofs_sb_info    *sb = SUPER_INFO(super);
 	struct efs_inode_info *in;
 	efs_block_t block, offset;
-	struct efs_dinode *efs_inode;
+	struct iofs_dinode *efs_inode;
 	struct inode *inode;
 
 	inode = iget_locked(super, ino);
@@ -78,15 +78,15 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 	*/
 
 	inode_index = inode->i_ino /
-		(IOFS_BLOCKSIZE / sizeof(struct efs_dinode));
+		(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
 
 	block = sb->fs_start + sb->first_block + 
 		(sb->group_size * (inode_index / sb->inode_blocks)) +
 		(inode_index % sb->inode_blocks);
 
 	offset = (inode->i_ino %
-			(IOFS_BLOCKSIZE / sizeof(struct efs_dinode))) *
-		sizeof(struct efs_dinode);
+			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode))) *
+		sizeof(struct iofs_dinode);
 
 	bh = sb_bread(inode->i_sb, block);
 	if (!bh) {
@@ -94,7 +94,7 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 		goto read_inode_error;
 	}
 
-	efs_inode = (struct efs_dinode *) (bh->b_data + offset);
+	efs_inode = (struct iofs_dinode *) (bh->b_data + offset);
     
 	inode->i_mode  = be16_to_cpu(efs_inode->di_mode);
 	set_nlink(inode, be16_to_cpu(efs_inode->di_nlink));

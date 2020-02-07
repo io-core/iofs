@@ -13,7 +13,7 @@
 #include <linux/types.h>
 #include <linux/magic.h>
 
-/* EFS superblock magic numbers */
+/* IOFS superblock magic numbers */
 #define IOFS_MAGIC	0x072959
 #define IOFS_NEWMAGIC	0x07295a
 #define IOFS_SUPER_MAGIC		0x414A53
@@ -23,7 +23,7 @@
 #define IOFS_SUPER		1
 #define IOFS_ROOTINODE		2
 
-/* efs superblock on disk */
+/* iofs superblock on disk */
 struct iofs_super {
 	__be32		fs_size;        /* size of filesystem, in sectors */
 	__be32		fs_firstcg;     /* bb offset to first cg */
@@ -47,7 +47,7 @@ struct iofs_super {
 	__be32		fs_checksum;    /* checksum of volume portion of fs */
 };
 
-/* efs superblock information in memory */
+/* iofs superblock information in memory */
 struct iofs_sb_info {
 	__u32	fs_magic;	/* superblock magic number */
 	__u32	fs_start;	/* first block of filesystem */

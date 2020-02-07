@@ -54,7 +54,7 @@ typedef struct edevs {
  * extent based filesystem inode as it appears on disk.  The efs inode
  * is exactly 128 bytes long.
  */
-struct	efs_dinode {
+struct	iofs_dinode {
 	__be16		di_mode;	/* mode and type of file */
 	__be16		di_nlink;	/* number of links to file */
 	__be16		di_uid;		/* owner's user id */

@@ -344,7 +344,7 @@ static int efs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 	buf->f_bavail  = sbi->data_free;	/* free blocks for non-root */
 	buf->f_files   = sbi->total_groups *	/* total inodes */
 			sbi->inode_blocks *
-			(IOFS_BLOCKSIZE / sizeof(struct efs_dinode));
+			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
 	buf->f_ffree   = sbi->inode_free;	/* free inodes */
 	buf->f_fsid.val[0] = (u32)id;
 	buf->f_fsid.val[1] = (u32)(id >> 32);
