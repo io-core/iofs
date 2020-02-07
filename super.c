@@ -16,7 +16,7 @@
 #include <linux/vfs.h>
 
 #include "iofs.h"
-#include <linux/efs_vh.h>
+#include "iofs_vh.h"
 #include "iofs_fs_sb.h"
 
 static int iofs_statfs(struct dentry *dentry, struct kstatfs *buf);
