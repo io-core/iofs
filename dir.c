@@ -24,6 +24,7 @@ const struct inode_operations iofs_dir_inode_operations = {
 
 static int iofs_readdir(struct file *file, struct dir_context *ctx)
 {
+/*
 	struct inode *inode = file_inode(file);
 	iofs_block_t		block;
 	int			slot;
@@ -101,5 +102,6 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 		block++;
 	}
 	ctx->pos = (block << IOFS_DIRBSIZE_BITS) | slot;
+*/
 	return 0;
 }
