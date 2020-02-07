@@ -239,9 +239,9 @@ static iofs_block_t iofs_validate_vh(struct volume_header *vh) {
 
 static int iofs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super) {
 
-	if (!IS_IOFS_MAGIC(be32_to_cpu(super->fs_magic)))
+	if (!IS_IOFS_MAGIC(le32_to_cpu(super->fs_magic)))
 		return -1;
-
+/*
 	sb->fs_magic     = be32_to_cpu(super->fs_magic);
 	sb->total_blocks = be32_to_cpu(super->fs_size);
 	sb->first_block  = be32_to_cpu(super->fs_firstcg);
@@ -250,7 +250,7 @@ static int iofs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super
 	sb->inode_free   = be32_to_cpu(super->fs_tinode);
 	sb->inode_blocks = be16_to_cpu(super->fs_cgisize);
 	sb->total_groups = be16_to_cpu(super->fs_ncg);
-    
+*/    
 	return 0;    
 }
 
@@ -333,19 +333,19 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 
 static int iofs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 	struct super_block *sb = dentry->d_sb;
-	struct iofs_sb_info *sbi = SUPER_INFO(sb);
+//	struct iofs_sb_info *sbi = SUPER_INFO(sb);
 	u64 id = huge_encode_dev(sb->s_bdev->bd_dev);
 
 	buf->f_type    = IOFS_SUPER_MAGIC;	/* efs magic number */
 	buf->f_bsize   = IOFS_BLOCKSIZE;		/* blocksize */
-	buf->f_blocks  = sbi->total_groups *	/* total data blocks */
-			(sbi->group_size - sbi->inode_blocks);
-	buf->f_bfree   = sbi->data_free;	/* free data blocks */
-	buf->f_bavail  = sbi->data_free;	/* free blocks for non-root */
-	buf->f_files   = sbi->total_groups *	/* total inodes */
-			sbi->inode_blocks *
-			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
-	buf->f_ffree   = sbi->inode_free;	/* free inodes */
+//	buf->f_blocks  = sbi->total_groups *	/* total data blocks */
+//			(sbi->group_size - sbi->inode_blocks);
+//	buf->f_bfree   = sbi->data_free;	/* free data blocks */
+//	buf->f_bavail  = sbi->data_free;	/* free blocks for non-root */
+//	buf->f_files   = sbi->total_groups *	/* total inodes */
+//			sbi->inode_blocks *
+//			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
+//	buf->f_ffree   = sbi->inode_free;	/* free inodes */
 	buf->f_fsid.val[0] = (u32)id;
 	buf->f_fsid.val[1] = (u32)(id >> 32);
 	buf->f_namelen = IOFS_MAXNAMELEN;	/* max filename length */
