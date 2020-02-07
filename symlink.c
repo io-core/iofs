@@ -2,8 +2,9 @@
 /*
  * symlink.c
  *
- * Copyright (c) 1999 Al Smith
+ * Copyright (c) 2020 Charles Perkins
  *
+ * Portions derived from work (c) 1999 Al Smith
  * Portions derived from work (c) 1995,1996 Christian Vogelgsang.
  */
 

@@ -219,7 +219,7 @@ static iofs_block_t iofs_validate_vh(struct volume_header *vh) {
 				 pt_entry->pt_name : "unknown");
 		}
 #endif
-		if (IS_EFS(pt_type)) {
+		if (IS_IOFS(pt_type)) {
 			sblock = be32_to_cpu(vh->vh_pt[i].pt_firstlbn);
 			slice = i;
 		}

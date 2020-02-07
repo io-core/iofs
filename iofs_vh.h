@@ -44,7 +44,7 @@ struct volume_header {
 /* partition type sysv is used for EFS format CD-ROM partitions */
 #define SGI_SYSV	0x05
 #define SGI_EFS		0x07
-#define IS_EFS(x)	(((x) == SGI_EFS) || ((x) == SGI_SYSV))
+#define IS_IOFS(x)	(((x) == SGI_EFS) || ((x) == SGI_SYSV))
 
 struct pt_types {
 	int	pt_type;
