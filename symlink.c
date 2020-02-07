@@ -12,12 +12,12 @@
 #include <linux/buffer_head.h>
 #include "iofs.h"
 
-static int efs_symlink_readpage(struct file *file, struct page *page)
+static int iofs_symlink_readpage(struct file *file, struct page *page)
 {
 	char *link = page_address(page);
 	struct buffer_head * bh;
 	struct inode * inode = page->mapping->host;
-	efs_block_t size = inode->i_size;
+	iofs_block_t size = inode->i_size;
 	int err;
   
 	err = -ENAMETOOLONG;
@@ -26,13 +26,13 @@ static int efs_symlink_readpage(struct file *file, struct page *page)
   
 	/* read first 512 bytes of link target */
 	err = -EIO;
-	bh = sb_bread(inode->i_sb, efs_bmap(inode, 0));
+	bh = sb_bread(inode->i_sb, iofs_bmap(inode, 0));
 	if (!bh)
 		goto fail;
 	memcpy(link, bh->b_data, (size > IOFS_BLOCKSIZE) ? IOFS_BLOCKSIZE : size);
 	brelse(bh);
 	if (size > IOFS_BLOCKSIZE) {
-		bh = sb_bread(inode->i_sb, efs_bmap(inode, 1));
+		bh = sb_bread(inode->i_sb, iofs_bmap(inode, 1));
 		if (!bh)
 			goto fail;
 		memcpy(link + IOFS_BLOCKSIZE, bh->b_data, size - IOFS_BLOCKSIZE);
@@ -48,6 +48,6 @@ fail:
 	return err;
 }
 
-const struct address_space_operations efs_symlink_aops = {
-	.readpage	= efs_symlink_readpage
+const struct address_space_operations iofs_symlink_aops = {
+	.readpage	= iofs_symlink_readpage
 };

@@ -27,8 +27,8 @@ static const char cprt[] = "IOFS: "IOFS_VERSION"  ";
 #define	IOFS_BLOCKSIZE_BITS	9
 #define	IOFS_BLOCKSIZE		(1 << IOFS_BLOCKSIZE_BITS)
 
-typedef	int32_t		efs_block_t;
-typedef uint32_t	efs_ino_t;
+typedef	int32_t		iofs_block_t;
+typedef uint32_t	iofs_ino_t;
 
 #define	IOFS_DIRECTEXTENTS	12
 
@@ -43,12 +43,12 @@ typedef union extent_u {
 		unsigned int	ex_length:8;	/* numblocks in this extent */
 		unsigned int	ex_offset:24;	/* logical offset into file */
 	} cooked;
-} efs_extent;
+} iofs_extent;
 
 typedef struct edevs {
 	__be16		odev;
 	__be32		ndev;
-} efs_devs;
+} iofs_devs;
 
 /*
  * extent based filesystem inode as it appears on disk.  The efs inode
@@ -68,8 +68,8 @@ struct	iofs_dinode {
 	u_char		di_version;	/* version of inode */
 	u_char		di_spare;	/* spare - used by AFS */
 	union di_addr {
-		efs_extent	di_extents[IOFS_DIRECTEXTENTS];
-		efs_devs	di_dev;	/* device for IFCHR/IFBLK */
+		iofs_extent	di_extents[IOFS_DIRECTEXTENTS];
+		iofs_devs	di_dev;	/* device for IFCHR/IFBLK */
 	} di_u;
 };
 
@@ -78,7 +78,7 @@ struct iofs_inode_info {
 	int		numextents;
 	int		lastextent;
 
-	efs_extent	extents[IOFS_DIRECTEXTENTS];
+	iofs_extent	extents[IOFS_DIRECTEXTENTS];
 	struct inode	vfs_inode;
 };
 
@@ -87,19 +87,19 @@ struct iofs_inode_info {
 #define IOFS_DIRBSIZE_BITS	IOFS_BLOCKSIZE_BITS
 #define IOFS_DIRBSIZE		(1 << IOFS_DIRBSIZE_BITS)
 
-struct efs_dentry {
+struct iofs_dentry {
 	__be32		inode;
 	unsigned char	namelen;
 	char		name[3];
 };
 
-#define IOFS_DENTSIZE	(sizeof(struct efs_dentry) - 3 + 1)
+#define IOFS_DENTSIZE	(sizeof(struct iofs_dentry) - 3 + 1)
 #define IOFS_MAXNAMELEN  ((1 << (sizeof(char) * 8)) - 1)
 
 #define IOFS_DIRBLK_HEADERSIZE	4
 #define IOFS_DIRBLK_MAGIC	0xbeef	/* moo */
 
-struct efs_dir {
+struct iofs_dir {
 	__be16	magic;
 	unsigned char	firstused;
 	unsigned char	slots;
@@ -129,20 +129,20 @@ static inline struct iofs_sb_info *SUPER_INFO(struct super_block *sb)
 struct statfs;
 struct fid;
 
-extern const struct inode_operations efs_dir_inode_operations;
-extern const struct file_operations efs_dir_operations;
-extern const struct address_space_operations efs_symlink_aops;
+extern const struct inode_operations iofs_dir_inode_operations;
+extern const struct file_operations iofs_dir_operations;
+extern const struct address_space_operations iofs_symlink_aops;
 
-extern struct inode *efs_iget(struct super_block *, unsigned long);
-extern efs_block_t efs_map_block(struct inode *, efs_block_t);
-extern int efs_get_block(struct inode *, sector_t, struct buffer_head *, int);
+extern struct inode *iofs_iget(struct super_block *, unsigned long);
+extern iofs_block_t iofs_map_block(struct inode *, iofs_block_t);
+extern int iofs_get_block(struct inode *, sector_t, struct buffer_head *, int);
 
-extern struct dentry *efs_lookup(struct inode *, struct dentry *, unsigned int);
-extern struct dentry *efs_fh_to_dentry(struct super_block *sb, struct fid *fid,
+extern struct dentry *iofs_lookup(struct inode *, struct dentry *, unsigned int);
+extern struct dentry *iofs_fh_to_dentry(struct super_block *sb, struct fid *fid,
 		int fh_len, int fh_type);
-extern struct dentry *efs_fh_to_parent(struct super_block *sb, struct fid *fid,
+extern struct dentry *iofs_fh_to_parent(struct super_block *sb, struct fid *fid,
 		int fh_len, int fh_type);
-extern struct dentry *efs_get_parent(struct dentry *);
-extern int efs_bmap(struct inode *, int);
+extern struct dentry *iofs_get_parent(struct dentry *);
+extern int iofs_bmap(struct inode *, int);
 
 #endif /* _IOFS_IOFS_H_ */

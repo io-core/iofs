@@ -8,22 +8,22 @@
 #include <linux/buffer_head.h>
 #include "iofs.h"
 
-static int efs_readdir(struct file *, struct dir_context *);
+static int iofs_readdir(struct file *, struct dir_context *);
 
-const struct file_operations efs_dir_operations = {
+const struct file_operations iofs_dir_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
-	.iterate_shared	= efs_readdir,
+	.iterate_shared	= iofs_readdir,
 };
 
-const struct inode_operations efs_dir_inode_operations = {
-	.lookup		= efs_lookup,
+const struct inode_operations iofs_dir_inode_operations = {
+	.lookup		= iofs_lookup,
 };
 
-static int efs_readdir(struct file *file, struct dir_context *ctx)
+static int iofs_readdir(struct file *file, struct dir_context *ctx)
 {
 	struct inode *inode = file_inode(file);
-	efs_block_t		block;
+	iofs_block_t		block;
 	int			slot;
 
 	if (inode->i_size & (IOFS_DIRBSIZE-1))
@@ -38,11 +38,11 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 
 	/* look at all blocks */
 	while (block < inode->i_blocks) {
-		struct efs_dir		*dirblock;
+		struct iofs_dir		*dirblock;
 		struct buffer_head *bh;
 
 		/* read the dir block */
-		bh = sb_bread(inode->i_sb, efs_bmap(inode, block));
+		bh = sb_bread(inode->i_sb, iofs_bmap(inode, block));
 
 		if (!bh) {
 			pr_err("%s(): failed to read dir block %d\n",
@@ -50,7 +50,7 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 			break;
 		}
 
-		dirblock = (struct efs_dir *) bh->b_data; 
+		dirblock = (struct iofs_dir *) bh->b_data; 
 
 		if (be16_to_cpu(dirblock->magic) != IOFS_DIRBLK_MAGIC) {
 			pr_err("%s(): invalid directory block\n", __func__);
@@ -59,15 +59,15 @@ static int efs_readdir(struct file *file, struct dir_context *ctx)
 		}
 
 		for (; slot < dirblock->slots; slot++) {
-			struct efs_dentry *dirslot;
-			efs_ino_t inodenum;
+			struct iofs_dentry *dirslot;
+			iofs_ino_t inodenum;
 			const char *nameptr;
 			int namelen;
 
 			if (dirblock->space[slot] == 0)
 				continue;
 
-			dirslot  = (struct efs_dentry *) (((char *) bh->b_data) + IOFS_SLOTAT(dirblock, slot));
+			dirslot  = (struct iofs_dentry *) (((char *) bh->b_data) + IOFS_SLOTAT(dirblock, slot));
 
 			inodenum = be32_to_cpu(dirslot->inode);
 			namelen  = dirslot->namelen;

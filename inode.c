@@ -12,25 +12,25 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include "iofs.h"
-#include <linux/efs_fs_sb.h>
+#include "iofs_fs_sb.h"
 
-static int efs_readpage(struct file *file, struct page *page)
+static int iofs_readpage(struct file *file, struct page *page)
 {
-	return block_read_full_page(page,efs_get_block);
+	return block_read_full_page(page,iofs_get_block);
 }
-static sector_t _efs_bmap(struct address_space *mapping, sector_t block)
+static sector_t _iofs_bmap(struct address_space *mapping, sector_t block)
 {
-	return generic_block_bmap(mapping,block,efs_get_block);
+	return generic_block_bmap(mapping,block,iofs_get_block);
 }
-static const struct address_space_operations efs_aops = {
-	.readpage = efs_readpage,
-	.bmap = _efs_bmap
+static const struct address_space_operations iofs_aops = {
+	.readpage = iofs_readpage,
+	.bmap = _iofs_bmap
 };
 
-static inline void extent_copy(efs_extent *src, efs_extent *dst) {
+static inline void extent_copy(iofs_extent *src, iofs_extent *dst) {
 	/*
 	 * this is slightly evil. it doesn't just copy
-	 * efs_extent from src to dst, it also mangles
+	 * iofs_extent from src to dst, it also mangles
 	 * the bits so that dst ends up in cpu byte-order.
 	 */
 
@@ -45,7 +45,7 @@ static inline void extent_copy(efs_extent *src, efs_extent *dst) {
 	return;
 }
 
-struct inode *efs_iget(struct super_block *super, unsigned long ino)
+struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 {
 	int i, inode_index;
 	dev_t device;
@@ -53,8 +53,8 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 	struct buffer_head *bh;
 	struct iofs_sb_info    *sb = SUPER_INFO(super);
 	struct iofs_inode_info *in;
-	efs_block_t block, offset;
-	struct iofs_dinode *efs_inode;
+	iofs_block_t block, offset;
+	struct iofs_dinode *iofs_inode;
 	struct inode *inode;
 
 	inode = iget_locked(super, ino);
@@ -94,16 +94,16 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 		goto read_inode_error;
 	}
 
-	efs_inode = (struct iofs_dinode *) (bh->b_data + offset);
+	iofs_inode = (struct iofs_dinode *) (bh->b_data + offset);
     
-	inode->i_mode  = be16_to_cpu(efs_inode->di_mode);
-	set_nlink(inode, be16_to_cpu(efs_inode->di_nlink));
-	i_uid_write(inode, (uid_t)be16_to_cpu(efs_inode->di_uid));
-	i_gid_write(inode, (gid_t)be16_to_cpu(efs_inode->di_gid));
-	inode->i_size  = be32_to_cpu(efs_inode->di_size);
-	inode->i_atime.tv_sec = be32_to_cpu(efs_inode->di_atime);
-	inode->i_mtime.tv_sec = be32_to_cpu(efs_inode->di_mtime);
-	inode->i_ctime.tv_sec = be32_to_cpu(efs_inode->di_ctime);
+	inode->i_mode  = be16_to_cpu(iofs_inode->di_mode);
+	set_nlink(inode, be16_to_cpu(iofs_inode->di_nlink));
+	i_uid_write(inode, (uid_t)be16_to_cpu(iofs_inode->di_uid));
+	i_gid_write(inode, (gid_t)be16_to_cpu(iofs_inode->di_gid));
+	inode->i_size  = be32_to_cpu(iofs_inode->di_size);
+	inode->i_atime.tv_sec = be32_to_cpu(iofs_inode->di_atime);
+	inode->i_mtime.tv_sec = be32_to_cpu(iofs_inode->di_mtime);
+	inode->i_ctime.tv_sec = be32_to_cpu(iofs_inode->di_ctime);
 	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
 
 	/* this is the number of blocks in the file */
@@ -113,9 +113,9 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 		inode->i_blocks = ((inode->i_size - 1) >> IOFS_BLOCKSIZE_BITS) + 1;
 	}
 
-	rdev = be16_to_cpu(efs_inode->di_u.di_dev.odev);
+	rdev = be16_to_cpu(iofs_inode->di_u.di_dev.odev);
 	if (rdev == 0xffff) {
-		rdev = be32_to_cpu(efs_inode->di_u.di_dev.ndev);
+		rdev = be32_to_cpu(iofs_inode->di_u.di_dev.ndev);
 		if (sysv_major(rdev) > 0xfff)
 			device = 0;
 		else
@@ -124,12 +124,12 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 		device = old_decode_dev(rdev);
 
 	/* get the number of extents for this object */
-	in->numextents = be16_to_cpu(efs_inode->di_numextents);
+	in->numextents = be16_to_cpu(iofs_inode->di_numextents);
 	in->lastextent = 0;
 
 	/* copy the extents contained within the inode to memory */
 	for(i = 0; i < IOFS_DIRECTEXTENTS; i++) {
-		extent_copy(&(efs_inode->di_u.di_extents[i]), &(in->extents[i]));
+		extent_copy(&(iofs_inode->di_u.di_extents[i]), &(in->extents[i]));
 		if (i < in->numextents && in->extents[i].cooked.ex_magic != 0) {
 			pr_warn("extent %d has bad magic number in inode %lu\n",
 				i, inode->i_ino);
@@ -139,21 +139,21 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 	}
 
 	brelse(bh);
-	pr_debug("efs_iget(): inode %lu, extents %d, mode %o\n",
+	pr_debug("iofs_iget(): inode %lu, extents %d, mode %o\n",
 		 inode->i_ino, in->numextents, inode->i_mode);
 	switch (inode->i_mode & S_IFMT) {
 		case S_IFDIR: 
-			inode->i_op = &efs_dir_inode_operations; 
-			inode->i_fop = &efs_dir_operations; 
+			inode->i_op = &iofs_dir_inode_operations; 
+			inode->i_fop = &iofs_dir_operations; 
 			break;
 		case S_IFREG:
 			inode->i_fop = &generic_ro_fops;
-			inode->i_data.a_ops = &efs_aops;
+			inode->i_data.a_ops = &iofs_aops;
 			break;
 		case S_IFLNK:
 			inode->i_op = &page_symlink_inode_operations;
 			inode_nohighmem(inode);
-			inode->i_data.a_ops = &efs_symlink_aops;
+			inode->i_data.a_ops = &iofs_symlink_aops;
 			break;
 		case S_IFCHR:
 		case S_IFBLK:
@@ -175,11 +175,11 @@ read_inode_error:
 	return ERR_PTR(-EIO);
 }
 
-static inline efs_block_t
-efs_extent_check(efs_extent *ptr, efs_block_t block, struct iofs_sb_info *sb) {
-	efs_block_t start;
-	efs_block_t length;
-	efs_block_t offset;
+static inline iofs_block_t
+iofs_extent_check(iofs_extent *ptr, iofs_block_t block, struct iofs_sb_info *sb) {
+	iofs_block_t start;
+	iofs_block_t length;
+	iofs_block_t offset;
 
 	/*
 	 * given an extent and a logical block within a file,
@@ -196,21 +196,21 @@ efs_extent_check(efs_extent *ptr, efs_block_t block, struct iofs_sb_info *sb) {
 	}
 }
 
-efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
+iofs_block_t iofs_map_block(struct inode *inode, iofs_block_t block) {
 	struct iofs_sb_info    *sb = SUPER_INFO(inode->i_sb);
 	struct iofs_inode_info *in = INODE_INFO(inode);
 	struct buffer_head    *bh = NULL;
 
 	int cur, last, first = 1;
 	int ibase, ioffset, dirext, direxts, indext, indexts;
-	efs_block_t iblock, result = 0, lastblock = 0;
-	efs_extent ext, *exts;
+	iofs_block_t iblock, result = 0, lastblock = 0;
+	iofs_extent ext, *exts;
 
 	last = in->lastextent;
 
 	if (in->numextents <= IOFS_DIRECTEXTENTS) {
 		/* first check the last extent we returned */
-		if ((result = efs_extent_check(&in->extents[last], block, sb)))
+		if ((result = iofs_extent_check(&in->extents[last], block, sb)))
 			return result;
     
 		/* if we only have one extent then nothing can be found */
@@ -227,7 +227,7 @@ efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
 		 */
 		for(dirext = 1; dirext < direxts; dirext++) {
 			cur = (last + dirext) % in->numextents;
-			if ((result = efs_extent_check(&in->extents[cur], block, sb))) {
+			if ((result = iofs_extent_check(&in->extents[cur], block, sb))) {
 				in->lastextent = cur;
 				return result;
 			}
@@ -255,7 +255,7 @@ efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
 		ibase = 0;
 		for(dirext = 0; cur < ibase && dirext < direxts; dirext++) {
 			ibase += in->extents[dirext].cooked.ex_length *
-				(IOFS_BLOCKSIZE / sizeof(efs_extent));
+				(IOFS_BLOCKSIZE / sizeof(iofs_extent));
 		}
 
 		if (dirext == direxts) {
@@ -269,9 +269,9 @@ efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
 		/* work out block number and offset of this indirect extent */
 		iblock = sb->fs_start + in->extents[dirext].cooked.ex_bn +
 			(cur - ibase) /
-			(IOFS_BLOCKSIZE / sizeof(efs_extent));
+			(IOFS_BLOCKSIZE / sizeof(iofs_extent));
 		ioffset = (cur - ibase) %
-			(IOFS_BLOCKSIZE / sizeof(efs_extent));
+			(IOFS_BLOCKSIZE / sizeof(iofs_extent));
 
 		if (first || lastblock != iblock) {
 			if (bh) brelse(bh);
@@ -288,7 +288,7 @@ efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
 			lastblock = iblock;
 		}
 
-		exts = (efs_extent *) bh->b_data;
+		exts = (iofs_extent *) bh->b_data;
 
 		extent_copy(&(exts[ioffset]), &ext);
 
@@ -299,7 +299,7 @@ efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
 			return 0;
 		}
 
-		if ((result = efs_extent_check(&ext, block, sb))) {
+		if ((result = iofs_extent_check(&ext, block, sb))) {
 			if (bh) brelse(bh);
 			in->lastextent = cur;
 			return result;

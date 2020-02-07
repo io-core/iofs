@@ -10,7 +10,7 @@
 #include <linux/buffer_head.h>
 #include "iofs.h"
 
-int efs_get_block(struct inode *inode, sector_t iblock,
+int iofs_get_block(struct inode *inode, sector_t iblock,
 		  struct buffer_head *bh_result, int create)
 {
 	int error = -EROFS;
@@ -28,13 +28,13 @@ int efs_get_block(struct inode *inode, sector_t iblock,
 #endif
 		return 0;
 	}
-	phys = efs_map_block(inode, iblock);
+	phys = iofs_map_block(inode, iblock);
 	if (phys)
 		map_bh(bh_result, inode->i_sb, phys);
 	return 0;
 }
 
-int efs_bmap(struct inode *inode, efs_block_t block) {
+int iofs_bmap(struct inode *inode, iofs_block_t block) {
 
 	if (block < 0) {
 		pr_warn("%s(): block < 0\n", __func__);
@@ -53,5 +53,5 @@ int efs_bmap(struct inode *inode, efs_block_t block) {
 		return 0;
 	}
 
-	return efs_map_block(inode, block);
+	return iofs_map_block(inode, block);
 }

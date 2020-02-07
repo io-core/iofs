@@ -18,27 +18,27 @@
 #include <linux/efs_vh.h>
 #include "iofs_fs_sb.h"
 
-static int efs_statfs(struct dentry *dentry, struct kstatfs *buf);
-static int efs_fill_super(struct super_block *s, void *d, int silent);
+static int iofs_statfs(struct dentry *dentry, struct kstatfs *buf);
+static int iofs_fill_super(struct super_block *s, void *d, int silent);
 
-static struct dentry *efs_mount(struct file_system_type *fs_type,
+static struct dentry *iofs_mount(struct file_system_type *fs_type,
 	int flags, const char *dev_name, void *data)
 {
-	return mount_bdev(fs_type, flags, dev_name, data, efs_fill_super);
+	return mount_bdev(fs_type, flags, dev_name, data, iofs_fill_super);
 }
 
-static void efs_kill_sb(struct super_block *s)
+static void iofs_kill_sb(struct super_block *s)
 {
 	struct iofs_sb_info *sbi = SUPER_INFO(s);
 	kill_block_super(s);
 	kfree(sbi);
 }
 
-static struct file_system_type efs_fs_type = {
+static struct file_system_type iofs_fs_type = {
 	.owner		= THIS_MODULE,
 	.name		= "efs",
-	.mount		= efs_mount,
-	.kill_sb	= efs_kill_sb,
+	.mount		= iofs_mount,
+	.kill_sb	= iofs_kill_sb,
 	.fs_flags	= FS_REQUIRES_DEV,
 };
 MODULE_ALIAS_FS("efs");
@@ -63,26 +63,26 @@ static struct pt_types sgi_pt_types[] = {
 };
 
 
-static struct kmem_cache * efs_inode_cachep;
+static struct kmem_cache * iofs_inode_cachep;
 
-static struct inode *efs_alloc_inode(struct super_block *sb)
+static struct inode *iofs_alloc_inode(struct super_block *sb)
 {
 	struct iofs_inode_info *ei;
-	ei = kmem_cache_alloc(efs_inode_cachep, GFP_KERNEL);
+	ei = kmem_cache_alloc(iofs_inode_cachep, GFP_KERNEL);
 	if (!ei)
 		return NULL;
 	return &ei->vfs_inode;
 }
 
-static void efs_i_callback(struct rcu_head *head)
+static void iofs_i_callback(struct rcu_head *head)
 {
         struct inode *inode = container_of(head, struct inode, i_rcu);
-        kmem_cache_free(efs_inode_cachep, INODE_INFO(inode));
+        kmem_cache_free(iofs_inode_cachep, INODE_INFO(inode));
 }
 
-void efs_destroy_inode(struct inode *inode)
+void iofs_destroy_inode(struct inode *inode)
 {
-	call_rcu(&inode->i_rcu, efs_i_callback);
+	call_rcu(&inode->i_rcu, iofs_i_callback);
 }
 
 static void init_once(void *foo)
@@ -94,11 +94,11 @@ static void init_once(void *foo)
 
 static int __init init_inodecache(void)
 {
-	efs_inode_cachep = kmem_cache_create("efs_inode_cache",
+	iofs_inode_cachep = kmem_cache_create("iofs_inode_cache",
 				sizeof(struct iofs_inode_info), 0,
 				SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD|
 				SLAB_ACCOUNT, init_once);
-	if (efs_inode_cachep == NULL)
+	if (iofs_inode_cachep == NULL)
 		return -ENOMEM;
 	return 0;
 }
@@ -110,37 +110,37 @@ static void destroy_inodecache(void)
 	 * destroy cache.
 	 */
 	rcu_barrier();
-	kmem_cache_destroy(efs_inode_cachep);
+	kmem_cache_destroy(iofs_inode_cachep);
 }
 
-static int efs_remount(struct super_block *sb, int *flags, char *data)
+static int iofs_remount(struct super_block *sb, int *flags, char *data)
 {
 	sync_filesystem(sb);
 	*flags |= SB_RDONLY;
 	return 0;
 }
 
-static const struct super_operations efs_superblock_operations = {
-	.alloc_inode	= efs_alloc_inode,
-	.destroy_inode  = efs_destroy_inode,
-//	.free_inode	= efs_free_inode,
-	.statfs		= efs_statfs,
-	.remount_fs	= efs_remount,
+static const struct super_operations iofs_superblock_operations = {
+	.alloc_inode	= iofs_alloc_inode,
+	.destroy_inode  = iofs_destroy_inode,
+//	.free_inode	= iofs_free_inode,
+	.statfs		= iofs_statfs,
+	.remount_fs	= iofs_remount,
 };
 
-static const struct export_operations efs_export_ops = {
-	.fh_to_dentry	= efs_fh_to_dentry,
-	.fh_to_parent	= efs_fh_to_parent,
-	.get_parent	= efs_get_parent,
+static const struct export_operations iofs_export_ops = {
+	.fh_to_dentry	= iofs_fh_to_dentry,
+	.fh_to_parent	= iofs_fh_to_parent,
+	.get_parent	= iofs_get_parent,
 };
 
-static int __init init_efs_fs(void) {
+static int __init init_iofs_fs(void) {
 	int err;
 	pr_info(IOFS_VERSION".");
 	err = init_inodecache();
 	if (err)
 		goto out1;
-	err = register_filesystem(&efs_fs_type);
+	err = register_filesystem(&iofs_fs_type);
 	if (err)
 		goto out;
 	return 0;
@@ -150,19 +150,19 @@ out1:
 	return err;
 }
 
-static void __exit exit_efs_fs(void) {
-	unregister_filesystem(&efs_fs_type);
+static void __exit exit_iofs_fs(void) {
+	unregister_filesystem(&iofs_fs_type);
 	destroy_inodecache();
 }
 
-module_init(init_efs_fs)
-module_exit(exit_efs_fs)
+module_init(init_iofs_fs)
+module_exit(exit_iofs_fs)
 
-static efs_block_t efs_validate_vh(struct volume_header *vh) {
+static iofs_block_t iofs_validate_vh(struct volume_header *vh) {
 	int		i;
 	__be32		cs, *ui;
 	int		csum;
-	efs_block_t	sblock = 0; /* shuts up gcc */
+	iofs_block_t	sblock = 0; /* shuts up gcc */
 	struct pt_types	*pt_entry;
 	int		pt_type, slice = -1;
 
@@ -237,7 +237,7 @@ static efs_block_t efs_validate_vh(struct volume_header *vh) {
 	return sblock;
 }
 
-static int efs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super) {
+static int iofs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super) {
 
 	if (!IS_IOFS_MAGIC(be32_to_cpu(super->fs_magic)))
 		return -1;
@@ -254,7 +254,7 @@ static int efs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super)
 	return 0;    
 }
 
-static int efs_fill_super(struct super_block *s, void *d, int silent)
+static int iofs_fill_super(struct super_block *s, void *d, int silent)
 {
 	struct iofs_sb_info *sb;
 	struct buffer_head *bh;
@@ -285,7 +285,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 	 * this isn't (yet) an error - just assume for the moment that
 	 * the device is valid and go on to search for a superblock.
 	 */
-	sb->fs_start = efs_validate_vh((struct volume_header *) bh->b_data);
+	sb->fs_start = iofs_validate_vh((struct volume_header *) bh->b_data);
 	brelse(bh);
 
 	if (sb->fs_start == -1) {
@@ -298,7 +298,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 		return -EIO;
 	}
 		
-	if (efs_validate_super(sb, (struct iofs_super *) bh->b_data)) {
+	if (iofs_validate_super(sb, (struct iofs_super *) bh->b_data)) {
 #ifdef DEBUG
 		pr_warn("invalid superblock at block %u\n",
 			sb->fs_start + IOFS_SUPER);
@@ -314,9 +314,9 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 #endif
 		s->s_flags |= SB_RDONLY;
 	}
-	s->s_op   = &efs_superblock_operations;
-	s->s_export_op = &efs_export_ops;
-	root = efs_iget(s, IOFS_ROOTINODE);
+	s->s_op   = &iofs_superblock_operations;
+	s->s_export_op = &iofs_export_ops;
+	root = iofs_iget(s, IOFS_ROOTINODE);
 	if (IS_ERR(root)) {
 		pr_err("get root inode failed\n");
 		return PTR_ERR(root);
@@ -331,7 +331,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 	return 0;
 }
 
-static int efs_statfs(struct dentry *dentry, struct kstatfs *buf) {
+static int iofs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 	struct super_block *sb = dentry->d_sb;
 	struct iofs_sb_info *sbi = SUPER_INFO(sb);
 	u64 id = huge_encode_dev(sb->s_bdev->bd_dev);
