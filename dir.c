@@ -33,18 +33,18 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 		pr_warn("%s(): directory size not a multiple of IOFS_DIRBSIZE\n",
 			__func__);
 
-	/* work out where this entry can be found */
+	// work out where this entry can be found 
 	block = ctx->pos >> IOFS_DIRBSIZE_BITS;
 
-	/* each block contains at most 256 slots */
+	// each block contains at most 256 slots 
 	slot  = ctx->pos & 0xff;
 
-	/* look at all blocks */
+	// look at all blocks 
 	while (block < inode->i_blocks) {
 		struct iofs_dir		*dirblock;
 		struct buffer_head *bh;
 
-		/* read the dir block */
+		// read the dir block 
 		bh = sb_bread(inode->i_sb, iofs_bmap(inode, block));
 
 		if (!bh) {
@@ -80,17 +80,17 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 				 inodenum, nameptr, namelen);
 			if (!namelen)
 				continue;
-			/* found the next entry */
+			// found the next entry 
 			ctx->pos = (block << IOFS_DIRBSIZE_BITS) | slot;
 
-			/* sanity check */
+			// sanity check 
 			if (nameptr - (char *) dirblock + namelen > IOFS_DIRBSIZE) {
 				pr_warn("directory entry %d exceeds directory block\n",
 					slot);
 				continue;
 			}
 
-			/* copy filename and data in dirslot */
+			// copy filename and data in dirslot 
 			if (!dir_emit(ctx, nameptr, namelen, inodenum, DT_UNKNOWN)) {
 				brelse(bh);
 				return 0;

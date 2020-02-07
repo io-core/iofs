@@ -24,7 +24,7 @@ static const char cprt[] = "IOFS: "IOFS_VERSION"  ";
 
 
 /* 1 block is 512 bytes */
-#define	IOFS_BLOCKSIZE_BITS	9
+#define	IOFS_BLOCKSIZE_BITS	10
 #define	IOFS_BLOCKSIZE		(1 << IOFS_BLOCKSIZE_BITS)
 
 typedef	int32_t		iofs_block_t;
