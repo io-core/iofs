@@ -67,7 +67,7 @@ static struct kmem_cache * efs_inode_cachep;
 
 static struct inode *efs_alloc_inode(struct super_block *sb)
 {
-	struct efs_inode_info *ei;
+	struct iofs_inode_info *ei;
 	ei = kmem_cache_alloc(efs_inode_cachep, GFP_KERNEL);
 	if (!ei)
 		return NULL;
@@ -87,7 +87,7 @@ void efs_destroy_inode(struct inode *inode)
 
 static void init_once(void *foo)
 {
-	struct efs_inode_info *ei = (struct efs_inode_info *) foo;
+	struct iofs_inode_info *ei = (struct iofs_inode_info *) foo;
 
 	inode_init_once(&ei->vfs_inode);
 }
@@ -95,7 +95,7 @@ static void init_once(void *foo)
 static int __init init_inodecache(void)
 {
 	efs_inode_cachep = kmem_cache_create("efs_inode_cache",
-				sizeof(struct efs_inode_info), 0,
+				sizeof(struct iofs_inode_info), 0,
 				SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD|
 				SLAB_ACCOUNT, init_once);
 	if (efs_inode_cachep == NULL)

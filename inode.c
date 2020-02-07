@@ -52,7 +52,7 @@ struct inode *efs_iget(struct super_block *super, unsigned long ino)
 	u32 rdev;
 	struct buffer_head *bh;
 	struct iofs_sb_info    *sb = SUPER_INFO(super);
-	struct efs_inode_info *in;
+	struct iofs_inode_info *in;
 	efs_block_t block, offset;
 	struct iofs_dinode *efs_inode;
 	struct inode *inode;
@@ -198,7 +198,7 @@ efs_extent_check(efs_extent *ptr, efs_block_t block, struct iofs_sb_info *sb) {
 
 efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
 	struct iofs_sb_info    *sb = SUPER_INFO(inode->i_sb);
-	struct efs_inode_info *in = INODE_INFO(inode);
+	struct iofs_inode_info *in = INODE_INFO(inode);
 	struct buffer_head    *bh = NULL;
 
 	int cur, last, first = 1;

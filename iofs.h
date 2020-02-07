@@ -74,7 +74,7 @@ struct	iofs_dinode {
 };
 
 /* efs inode storage in memory */
-struct efs_inode_info {
+struct iofs_inode_info {
 	int		numextents;
 	int		lastextent;
 
@@ -116,9 +116,9 @@ struct efs_dir {
 #define IOFS_REALOFF(offset) ((offset << 1))
 
 
-static inline struct efs_inode_info *INODE_INFO(struct inode *inode)
+static inline struct iofs_inode_info *INODE_INFO(struct inode *inode)
 {
-	return container_of(inode, struct efs_inode_info, vfs_inode);
+	return container_of(inode, struct iofs_inode_info, vfs_inode);
 }
 
 static inline struct iofs_sb_info *SUPER_INFO(struct super_block *sb)
