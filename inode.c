@@ -48,6 +48,7 @@ static inline void extent_copy(iofs_extent *src, iofs_extent *dst) {
 
 struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 {
+/*
 	int i, inode_index;
 	dev_t device;
 	u32 rdev;
@@ -66,24 +67,24 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 
 	in = INODE_INFO(inode);
 
-	/*
-	** EFS layout:
-	**
-	** |   cylinder group    |   cylinder group    |   cylinder group ..etc
-	** |inodes|data          |inodes|data          |inodes|data       ..etc
-	**
-	** work out the inode block index, (considering initially that the
-	** inodes are stored as consecutive blocks). then work out the block
-	** number of that inode given the above layout, and finally the
-	** offset of the inode within that block.
-	*/
+	
+	// EFS layout:
+	//
+	// |   cylinder group    |   cylinder group    |   cylinder group ..etc
+	// |inodes|data          |inodes|data          |inodes|data       ..etc
+	//
+	// work out the inode block index, (considering initially that the
+	// inodes are stored as consecutive blocks). then work out the block
+	// number of that inode given the above layout, and finally the
+	// offset of the inode within that block.
+	
 
 	inode_index = inode->i_ino /
 		(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
 
-	block = sb->fs_start + sb->first_block + 
-		(sb->group_size * (inode_index / sb->inode_blocks)) +
-		(inode_index % sb->inode_blocks);
+	block = 1; //sb->fs_start + sb->first_block + 
+		//(sb->group_size * (inode_index / sb->inode_blocks)) +
+		//(inode_index % sb->inode_blocks);
 
 	offset = (inode->i_ino %
 			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode))) *
@@ -107,7 +108,7 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 	inode->i_ctime.tv_sec = be32_to_cpu(iofs_inode->di_ctime);
 	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
 
-	/* this is the number of blocks in the file */
+	// this is the number of blocks in the file 
 	if (inode->i_size == 0) {
 		inode->i_blocks = 0;
 	} else {
@@ -124,11 +125,11 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 	} else
 		device = old_decode_dev(rdev);
 
-	/* get the number of extents for this object */
+	// get the number of extents for this object 
 	in->numextents = be16_to_cpu(iofs_inode->di_numextents);
 	in->lastextent = 0;
 
-	/* copy the extents contained within the inode to memory */
+	// copy the extents contained within the inode to memory 
 	for(i = 0; i < IOFS_DIRECTEXTENTS; i++) {
 		extent_copy(&(iofs_inode->di_u.di_extents[i]), &(in->extents[i]));
 		if (i < in->numextents && in->extents[i].cooked.ex_magic != 0) {
@@ -173,6 +174,7 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 read_inode_error:
 	pr_warn("failed to read inode %lu\n", inode->i_ino);
 	iget_failed(inode);
+*/
 	return ERR_PTR(-EIO);
 }
 

@@ -239,10 +239,11 @@ static iofs_block_t iofs_validate_vh(struct volume_header *vh) {
 
 static int iofs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super) {
 
+
 	if (!IS_IOFS_MAGIC(le32_to_cpu(super->fs_magic)))
 		return -1;
+	sb->fs_magic     = le32_to_cpu(super->fs_magic);
 /*
-	sb->fs_magic     = be32_to_cpu(super->fs_magic);
 	sb->total_blocks = be32_to_cpu(super->fs_size);
 	sb->first_block  = be32_to_cpu(super->fs_firstcg);
 	sb->group_size   = be32_to_cpu(super->fs_cgfsize);
@@ -271,28 +272,10 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 			IOFS_BLOCKSIZE);
 		return -EINVAL;
 	}
-  
-	/* read the vh (volume header) block */
+
+        sb->fs_start = 1;
+
 	bh = sb_bread(s, 0);
-
-	if (!bh) {
-		pr_err("cannot read volume header\n");
-		return -EIO;
-	}
-
-	/*
-	 * if this returns zero then we didn't find any partition table.
-	 * this isn't (yet) an error - just assume for the moment that
-	 * the device is valid and go on to search for a superblock.
-	 */
-	sb->fs_start = iofs_validate_vh((struct volume_header *) bh->b_data);
-	brelse(bh);
-
-	if (sb->fs_start == -1) {
-		return -EINVAL;
-	}
-
-	bh = sb_bread(s, sb->fs_start + IOFS_SUPER);
 	if (!bh) {
 		pr_err("cannot read superblock\n");
 		return -EIO;
@@ -301,7 +284,7 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 	if (iofs_validate_super(sb, (struct iofs_super *) bh->b_data)) {
 #ifdef DEBUG
 		pr_warn("invalid superblock at block %u\n",
-			sb->fs_start + IOFS_SUPER);
+			sb->fs_start );
 #endif
 		brelse(bh);
 		return -EINVAL;
@@ -314,6 +297,7 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 #endif
 		s->s_flags |= SB_RDONLY;
 	}
+
 	s->s_op   = &iofs_superblock_operations;
 	s->s_export_op = &iofs_export_ops;
 	root = iofs_iget(s, IOFS_ROOTINODE);

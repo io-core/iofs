@@ -14,7 +14,7 @@
 #include <linux/magic.h>
 
 /* IOFS superblock magic numbers */
-#define IOFS_MAGIC	0x072959
+#define IOFS_MAGIC	0x9b1ea38d
 #define IOFS_NEWMAGIC	0x07295a
 #define IOFS_SUPER_MAGIC		0x414A53
 
@@ -53,15 +53,17 @@ struct iofs_super {
 
 /* iofs superblock information in memory */
 struct iofs_sb_info {
-	__u32	fs_magic;	/* superblock magic number */
-	__u32	fs_start;	/* first block of filesystem */
-	__u32	first_block;	/* first data block in filesystem */
-	__u32	total_blocks;	/* total number of blocks in filesystem */
-	__u32	group_size;	/* # of blocks a group consists of */ 
-	__u32	data_free;	/* # of free data blocks */
-	__u32	inode_free;	/* # of free inodes */
-	__u16	inode_blocks;	/* # of blocks used for inodes in every grp */
-	__u16	total_groups;	/* # of groups */
+	__u32	fs_magic;	// superblock magic number 
+	__u32	fs_start;	// first block of filesystem 
+/*
+	__u32	first_block;	// first data block in filesystem 
+	__u32	total_blocks;	// total number of blocks in filesystem 
+	__u32	group_size;	// # of blocks a group consists of 
+	__u32	data_free;	// # of free data blocks 
+	__u32	inode_free;	// # of free inodes 
+	__u16	inode_blocks;	// # of blocks used for inodes in every grp 
+	__u16	total_groups;	// # of groups 
+*/
 };
 
 #endif /* __IOFS_FS_SB_H__ */
