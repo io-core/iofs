@@ -38,7 +38,7 @@ struct  iofs_de {  // directory entry B-tree node
     char name[IOFS_FNLENGTH];
     uint32_t  adr;       // sec no of file header
     uint32_t  p;         // sec no of descendant in directory
-};
+}__attribute__((packed));
 
 
 struct iofs_fh {    // file header
@@ -49,20 +49,20 @@ struct iofs_fh {    // file header
     uint32_t ext[IOFS_EXTABSIZE];                     // ExtensionTable
     uint32_t sec[IOFS_SECTABSIZE];                    // SectorTable;
     char fill[IOFS_SECTORSIZE - IOFS_HEADERSIZE];     // File Data
-};
+}__attribute__((packed));
 
 struct iofs_dp {    // directory page
     uint32_t m;
     uint32_t p0;         //sec no of left descendant in directory
     char fill[IOFS_FILLERSIZE];
     struct iofs_de e[24];
-};
+}__attribute__((packed));
 
 
 struct iofs_dir_record {
     char filename[IOFS_FILENAME_MAXLEN];
     uint64_t inode_no;
-};
+}__attribute__((packed));
 
 struct iofs_inode {
     uint32_t origin;     // magic number on disk, inode type | sector number in memory
@@ -70,7 +70,8 @@ struct iofs_inode {
        struct iofs_fh fhb;
        struct iofs_dp dirb;
     };
-};
+    struct inode vfs_inode;
+}__attribute__((packed));
 
 
 struct old_iofs_inode {
@@ -113,6 +114,11 @@ static const uint64_t IOFS_ROOTDIR_INODE_NO = 0;
 static const uint64_t IOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET = 0;
 
 /* Helper functions */
+
+static inline struct iofs_inode *INODE_INFO(struct inode *inode)
+{
+	return container_of(inode, struct iofs_inode, vfs_inode);
+}
 
 static inline uint64_t IOFS_INODES_PER_BLOCK_HSB(
         struct iofs_superblock *iofs_sb) {

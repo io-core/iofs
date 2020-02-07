@@ -100,7 +100,7 @@ int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no);
 struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
                                                 uint64_t inode_no);
 void iofs_save_iofs_inode(struct super_block *sb,
-                                struct iofs_inode *inode);
+                                struct iofs_inode *inode, int ino);
 int iofs_add_dir_record(struct super_block *sb, struct inode *dir,
                            struct dentry *dentry, struct inode *inode);
 int iofs_alloc_data_block(struct super_block *sb, uint64_t *out_data_block_no);

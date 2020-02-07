@@ -33,6 +33,13 @@ const struct file_operations iofs_file_operations = {
 
 struct kmem_cache *iofs_inode_cache = NULL;
 
+static void iofs_inode_cache_destroy(void)
+{
+        rcu_barrier();
+        kmem_cache_destroy(iofs_inode_cache);
+        iofs_inode_cache = NULL;
+}
+
 static int __init iofs_init(void)
 {
     int ret;
@@ -61,7 +68,9 @@ static void __exit iofs_exit(void)
     int ret;
 
     ret = unregister_filesystem(&iofs_fs_type);
-    kmem_cache_destroy(iofs_inode_cache);
+    iofs_inode_cache_destroy();
+
+//    kmem_cache_destroy(iofs_inode_cache);
 
     if (likely(ret == 0)) {
         printk(KERN_INFO "Sucessfully unregistered iofs\n");

@@ -85,12 +85,13 @@ struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
     struct iofs_inode *inode;
     struct iofs_inode *inode_buf;
 
-    bh = sb_bread(sb, IOFS_INODE_TABLE_START_BLOCK_NO + IOFS_INODE_BLOCK_OFFSET(sb, inode_no));
+    bh = sb_bread(sb, inode_no - 1);
     BUG_ON(!bh);
-    
-    inode = (struct iofs_inode *)(bh->b_data + IOFS_INODE_BYTE_OFFSET(sb, inode_no));
+   
+    inode = (struct iofs_inode *)(bh->b_data);
     inode_buf = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
-    memcpy(inode_buf, inode, sizeof(*inode_buf));
+
+    memcpy(inode_buf, inode, (uint64_t)&inode->vfs_inode - (uint64_t)&inode->origin);  //sizeof(*inode_buf));
 
     brelse(bh);
     return inode_buf;
