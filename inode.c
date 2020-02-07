@@ -1,312 +1,313 @@
-#include "kiofs.h"
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * inode.c
+ *
+ * Copyright (c) 1999 Al Smith
+ *
+ * Portions derived from work (c) 1995,1996 Christian Vogelgsang,
+ *              and from work (c) 1998 Mike Shaver.
+ */
 
-void iofs_destroy_inode(struct inode *inode) {
-    struct iofs_inode *iofs_inode = IOFS_INODE(inode);
+#include <linux/buffer_head.h>
+#include <linux/module.h>
+#include <linux/fs.h>
+#include "iofs.h"
+#include <linux/efs_fs_sb.h>
 
-    printk(KERN_INFO "Freeing private data of inode %p (%lu)\n",
-           iofs_inode, inode->i_ino);
-    kmem_cache_free(iofs_inode_cache, iofs_inode);
+static int efs_readpage(struct file *file, struct page *page)
+{
+	return block_read_full_page(page,efs_get_block);
+}
+static sector_t _efs_bmap(struct address_space *mapping, sector_t block)
+{
+	return generic_block_bmap(mapping,block,efs_get_block);
+}
+static const struct address_space_operations efs_aops = {
+	.readpage = efs_readpage,
+	.bmap = _efs_bmap
+};
+
+static inline void extent_copy(efs_extent *src, efs_extent *dst) {
+	/*
+	 * this is slightly evil. it doesn't just copy
+	 * efs_extent from src to dst, it also mangles
+	 * the bits so that dst ends up in cpu byte-order.
+	 */
+
+	dst->cooked.ex_magic  =  (unsigned int) src->raw[0];
+	dst->cooked.ex_bn     = ((unsigned int) src->raw[1] << 16) |
+				((unsigned int) src->raw[2] <<  8) |
+				((unsigned int) src->raw[3] <<  0);
+	dst->cooked.ex_length =  (unsigned int) src->raw[4];
+	dst->cooked.ex_offset = ((unsigned int) src->raw[5] << 16) |
+				((unsigned int) src->raw[6] <<  8) |
+				((unsigned int) src->raw[7] <<  0);
+	return;
 }
 
-void iofs_fill_inode(struct super_block *sb, struct inode *inode,
-                        struct iofs_inode *iofs_inode, int ino) {
+struct inode *efs_iget(struct super_block *super, unsigned long ino)
+{
+	int i, inode_index;
+	dev_t device;
+	u32 rdev;
+	struct buffer_head *bh;
+	struct efs_sb_info    *sb = SUPER_INFO(super);
+	struct efs_inode_info *in;
+	efs_block_t block, offset;
+	struct efs_dinode *efs_inode;
+	struct inode *inode;
 
-    if (iofs_inode->origin == IOFS_DIRMARK) {
-      inode->i_mode = 0040777; //octal
-    }else{
-      inode->i_mode = 0100777; //octal
-    }
-    inode->i_sb = sb;
-    inode->i_ino = ino;
-    inode->i_op = &iofs_inode_ops;
-    inode->i_atime = inode->i_mtime 
-                   = inode->i_ctime
-                   = current_time(inode);
-    inode->i_private = iofs_inode;    
+	inode = iget_locked(super, ino);
+	if (!inode)
+		return ERR_PTR(-ENOMEM);
+	if (!(inode->i_state & I_NEW))
+		return inode;
+
+	in = INODE_INFO(inode);
+
+	/*
+	** EFS layout:
+	**
+	** |   cylinder group    |   cylinder group    |   cylinder group ..etc
+	** |inodes|data          |inodes|data          |inodes|data       ..etc
+	**
+	** work out the inode block index, (considering initially that the
+	** inodes are stored as consecutive blocks). then work out the block
+	** number of that inode given the above layout, and finally the
+	** offset of the inode within that block.
+	*/
+
+	inode_index = inode->i_ino /
+		(EFS_BLOCKSIZE / sizeof(struct efs_dinode));
+
+	block = sb->fs_start + sb->first_block + 
+		(sb->group_size * (inode_index / sb->inode_blocks)) +
+		(inode_index % sb->inode_blocks);
+
+	offset = (inode->i_ino %
+			(EFS_BLOCKSIZE / sizeof(struct efs_dinode))) *
+		sizeof(struct efs_dinode);
+
+	bh = sb_bread(inode->i_sb, block);
+	if (!bh) {
+		pr_warn("%s() failed at block %d\n", __func__, block);
+		goto read_inode_error;
+	}
+
+	efs_inode = (struct efs_dinode *) (bh->b_data + offset);
     
-    if (S_ISDIR(inode->i_mode)) {
-        inode->i_fop = &iofs_dir_operations;
-    } else if (S_ISREG(inode->i_mode)) {
-        inode->i_fop = &iofs_file_operations;
-    } else {
-        printk(KERN_WARNING
-               "Inode %lu is neither a directory nor a regular file",
-               inode->i_ino);
-        inode->i_fop = NULL;
-    }
+	inode->i_mode  = be16_to_cpu(efs_inode->di_mode);
+	set_nlink(inode, be16_to_cpu(efs_inode->di_nlink));
+	i_uid_write(inode, (uid_t)be16_to_cpu(efs_inode->di_uid));
+	i_gid_write(inode, (gid_t)be16_to_cpu(efs_inode->di_gid));
+	inode->i_size  = be32_to_cpu(efs_inode->di_size);
+	inode->i_atime.tv_sec = be32_to_cpu(efs_inode->di_atime);
+	inode->i_mtime.tv_sec = be32_to_cpu(efs_inode->di_mtime);
+	inode->i_ctime.tv_sec = be32_to_cpu(efs_inode->di_ctime);
+	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
+
+	/* this is the number of blocks in the file */
+	if (inode->i_size == 0) {
+		inode->i_blocks = 0;
+	} else {
+		inode->i_blocks = ((inode->i_size - 1) >> EFS_BLOCKSIZE_BITS) + 1;
+	}
+
+	rdev = be16_to_cpu(efs_inode->di_u.di_dev.odev);
+	if (rdev == 0xffff) {
+		rdev = be32_to_cpu(efs_inode->di_u.di_dev.ndev);
+		if (sysv_major(rdev) > 0xfff)
+			device = 0;
+		else
+			device = MKDEV(sysv_major(rdev), sysv_minor(rdev));
+	} else
+		device = old_decode_dev(rdev);
+
+	/* get the number of extents for this object */
+	in->numextents = be16_to_cpu(efs_inode->di_numextents);
+	in->lastextent = 0;
+
+	/* copy the extents contained within the inode to memory */
+	for(i = 0; i < EFS_DIRECTEXTENTS; i++) {
+		extent_copy(&(efs_inode->di_u.di_extents[i]), &(in->extents[i]));
+		if (i < in->numextents && in->extents[i].cooked.ex_magic != 0) {
+			pr_warn("extent %d has bad magic number in inode %lu\n",
+				i, inode->i_ino);
+			brelse(bh);
+			goto read_inode_error;
+		}
+	}
+
+	brelse(bh);
+	pr_debug("efs_iget(): inode %lu, extents %d, mode %o\n",
+		 inode->i_ino, in->numextents, inode->i_mode);
+	switch (inode->i_mode & S_IFMT) {
+		case S_IFDIR: 
+			inode->i_op = &efs_dir_inode_operations; 
+			inode->i_fop = &efs_dir_operations; 
+			break;
+		case S_IFREG:
+			inode->i_fop = &generic_ro_fops;
+			inode->i_data.a_ops = &efs_aops;
+			break;
+		case S_IFLNK:
+			inode->i_op = &page_symlink_inode_operations;
+			inode_nohighmem(inode);
+			inode->i_data.a_ops = &efs_symlink_aops;
+			break;
+		case S_IFCHR:
+		case S_IFBLK:
+		case S_IFIFO:
+			init_special_inode(inode, inode->i_mode, device);
+			break;
+		default:
+			pr_warn("unsupported inode mode %o\n", inode->i_mode);
+			goto read_inode_error;
+			break;
+	}
+
+	unlock_new_inode(inode);
+	return inode;
+        
+read_inode_error:
+	pr_warn("failed to read inode %lu\n", inode->i_ino);
+	iget_failed(inode);
+	return ERR_PTR(-EIO);
 }
 
+static inline efs_block_t
+efs_extent_check(efs_extent *ptr, efs_block_t block, struct efs_sb_info *sb) {
+	efs_block_t start;
+	efs_block_t length;
+	efs_block_t offset;
 
-int iofs_alloc_iofs_inode(struct super_block *sb, uint64_t *out_inode_no) {
-/*
-    struct iofs_superblock *iofs_sb;
-    struct buffer_head *bh;
-    uint64_t i;
-    int ret;
-    char *bitmap;
-    char *slot;
-    char needle;
+	/*
+	 * given an extent and a logical block within a file,
+	 * can this block be found within this extent ?
+	 */
+	start  = ptr->cooked.ex_bn;
+	length = ptr->cooked.ex_length;
+	offset = ptr->cooked.ex_offset;
 
-    iofs_sb = IOFS_SB(sb);
-
-    mutex_lock(&iofs_sb_lock);
-
-    bh = sb_bread(sb, IOFS_INODE_BITMAP_BLOCK_NO);
-    BUG_ON(!bh);
-
-    bitmap = bh->b_data;
-    ret = -ENOSPC;
-    for (i = 0; i < iofs_sb->inode_table_size; i++) {
-        slot = bitmap + i / BITS_IN_BYTE;
-        needle = 1 << (i % BITS_IN_BYTE);
-        if (0 == (*slot & needle)) {
-            *out_inode_no = i;
-            *slot |= needle;
-            iofs_sb->inode_count += 1;
-            ret = 0;
-            break;
-        }
-    }
-
-    mark_buffer_dirty(bh);
-    sync_dirty_buffer(bh);
-    brelse(bh);
-    iofs_save_sb(sb);
-
-    mutex_unlock(&iofs_sb_lock);
-    return ret;
-*/
-    return -ENOSPC;
+	if ((block >= offset) && (block < offset+length)) {
+		return(sb->fs_start + start + block - offset);
+	} else {
+		return 0;
+	}
 }
 
-struct iofs_inode *iofs_get_iofs_inode(struct super_block *sb,
-                                                uint64_t inode_no) {
-    struct buffer_head *bh;
-    struct iofs_inode *inode;
-    struct iofs_inode *inode_buf;
+efs_block_t efs_map_block(struct inode *inode, efs_block_t block) {
+	struct efs_sb_info    *sb = SUPER_INFO(inode->i_sb);
+	struct efs_inode_info *in = INODE_INFO(inode);
+	struct buffer_head    *bh = NULL;
 
-    bh = sb_bread(sb, inode_no - 1);
-    BUG_ON(!bh);
-   
-    inode = (struct iofs_inode *)(bh->b_data);
-    inode_buf = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
+	int cur, last, first = 1;
+	int ibase, ioffset, dirext, direxts, indext, indexts;
+	efs_block_t iblock, result = 0, lastblock = 0;
+	efs_extent ext, *exts;
 
-    memcpy(inode_buf, inode, (uint64_t)&inode->vfs_inode - (uint64_t)&inode->origin);  //sizeof(*inode_buf));
+	last = in->lastextent;
 
-    brelse(bh);
-    return inode_buf;
-}
+	if (in->numextents <= EFS_DIRECTEXTENTS) {
+		/* first check the last extent we returned */
+		if ((result = efs_extent_check(&in->extents[last], block, sb)))
+			return result;
+    
+		/* if we only have one extent then nothing can be found */
+		if (in->numextents == 1) {
+			pr_err("%s() failed to map (1 extent)\n", __func__);
+			return 0;
+		}
 
-void iofs_save_iofs_inode(struct super_block *sb,
-                                struct iofs_inode *inode_buf, int ino) {
-    struct buffer_head *bh;
-    struct iofs_inode *inode;
-    uint64_t inode_no;
+		direxts = in->numextents;
 
-    inode_no = ino;
-    bh = sb_bread(sb, IOFS_INODE_TABLE_START_BLOCK_NO + IOFS_INODE_BLOCK_OFFSET(sb, inode_no));
-    BUG_ON(!bh);
+		/*
+		 * check the stored extents in the inode
+		 * start with next extent and check forwards
+		 */
+		for(dirext = 1; dirext < direxts; dirext++) {
+			cur = (last + dirext) % in->numextents;
+			if ((result = efs_extent_check(&in->extents[cur], block, sb))) {
+				in->lastextent = cur;
+				return result;
+			}
+		}
 
-    inode = (struct iofs_inode *)(bh->b_data + IOFS_INODE_BYTE_OFFSET(sb, inode_no));
-    memcpy(inode, inode_buf, sizeof(*inode));
+		pr_err("%s() failed to map block %u (dir)\n", __func__, block);
+		return 0;
+	}
 
-    mark_buffer_dirty(bh);
-    sync_dirty_buffer(bh);
-    brelse(bh);
-}
+	pr_debug("%s(): indirect search for logical block %u\n",
+		 __func__, block);
+	direxts = in->extents[0].cooked.ex_offset;
+	indexts = in->numextents;
 
-int iofs_add_dir_record(struct super_block *sb, struct inode *dir,
-                           struct dentry *dentry, struct inode *inode) {
-/*
-    struct buffer_head *bh;
-    struct iofs_inode *parent_iofs_inode;
-    struct iofs_dir_record *dir_record;
+	for(indext = 0; indext < indexts; indext++) {
+		cur = (last + indext) % indexts;
 
-    parent_iofs_inode = IOFS_INODE(dir);
-    if (unlikely(parent_iofs_inode->dirb.m
-            >= IOFS_DIR_MAX_RECORD(sb))) {
-        return -ENOSPC;
-    }
+		/*
+		 * work out which direct extent contains `cur'.
+		 *
+		 * also compute ibase: i.e. the number of the first
+		 * indirect extent contained within direct extent `cur'.
+		 *
+		 */
+		ibase = 0;
+		for(dirext = 0; cur < ibase && dirext < direxts; dirext++) {
+			ibase += in->extents[dirext].cooked.ex_length *
+				(EFS_BLOCKSIZE / sizeof(efs_extent));
+		}
 
-    bh = sb_bread(sb, parent_iofs_inode->data_block_no);
-    BUG_ON(!bh);
+		if (dirext == direxts) {
+			/* should never happen */
+			pr_err("couldn't find direct extent for indirect extent %d (block %u)\n",
+			       cur, block);
+			if (bh) brelse(bh);
+			return 0;
+		}
+		
+		/* work out block number and offset of this indirect extent */
+		iblock = sb->fs_start + in->extents[dirext].cooked.ex_bn +
+			(cur - ibase) /
+			(EFS_BLOCKSIZE / sizeof(efs_extent));
+		ioffset = (cur - ibase) %
+			(EFS_BLOCKSIZE / sizeof(efs_extent));
 
-    dir_record = (struct iofs_dir_record *)bh->b_data;
-    dir_record += parent_iofs_inode->dirb.m;
-    dir_record->inode_no = inode->i_ino;
-    strcpy(dir_record->filename, dentry->d_name.name);
+		if (first || lastblock != iblock) {
+			if (bh) brelse(bh);
 
-    mark_buffer_dirty(bh);
-    sync_dirty_buffer(bh);
-    brelse(bh);
+			bh = sb_bread(inode->i_sb, iblock);
+			if (!bh) {
+				pr_err("%s() failed at block %d\n",
+				       __func__, iblock);
+				return 0;
+			}
+			pr_debug("%s(): read indirect extent block %d\n",
+				 __func__, iblock);
+			first = 0;
+			lastblock = iblock;
+		}
 
-    parent_iofs_inode->dir_children_count += 1;
-    iofs_save_iofs_inode(sb, parent_iofs_inode, inode->i_ino);
-*/
-    return 0;
-}
+		exts = (efs_extent *) bh->b_data;
 
-int iofs_alloc_data_block(struct super_block *sb, uint64_t *out_data_block_no) {
-    struct iofs_superblock *iofs_sb;
-    struct buffer_head *bh;
-    uint64_t i;
-    int ret;
-    char *bitmap;
-    char *slot;
-    char needle;
+		extent_copy(&(exts[ioffset]), &ext);
 
-    iofs_sb = IOFS_SB(sb);
+		if (ext.cooked.ex_magic != 0) {
+			pr_err("extent %d has bad magic number in block %d\n",
+			       cur, iblock);
+			if (bh) brelse(bh);
+			return 0;
+		}
 
-    mutex_lock(&iofs_sb_lock);
+		if ((result = efs_extent_check(&ext, block, sb))) {
+			if (bh) brelse(bh);
+			in->lastextent = cur;
+			return result;
+		}
+	}
+	if (bh) brelse(bh);
+	pr_err("%s() failed to map block %u (indir)\n", __func__, block);
+	return 0;
+}  
 
-    bh = sb_bread(sb, IOFS_DATA_BLOCK_BITMAP_BLOCK_NO);
-    BUG_ON(!bh);
-
-    bitmap = bh->b_data;
-    ret = -ENOSPC;
-    for (i = 0; i < iofs_sb->data_block_table_size; i++) {
-        slot = bitmap + i / BITS_IN_BYTE;
-        needle = 1 << (i % BITS_IN_BYTE);
-        if (0 == (*slot & needle)) {
-            *out_data_block_no
-                = IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO(sb) + i;
-            *slot |= needle;
-            iofs_sb->data_block_count += 1;
-            ret = 0;
-            break;
-        }
-    }
-
-    mark_buffer_dirty(bh);
-    sync_dirty_buffer(bh);
-    brelse(bh);
-    iofs_save_sb(sb);
-
-    mutex_unlock(&iofs_sb_lock);
-    return ret;
-}
-
-int iofs_create_inode(struct inode *dir, struct dentry *dentry,
-                         umode_t mode) {
-/*
-
-    struct super_block *sb;
-    struct iofs_superblock *iofs_sb;
-    uint64_t inode_no;
-    struct iofs_inode *iofs_inode;
-    struct inode *inode;
-    int ret;
-
-    sb = dir->i_sb;
-    iofs_sb = IOFS_SB(sb);
-
-    // Create iofs_inode 
-    ret = iofs_alloc_iofs_inode(sb, &inode_no);
-    if (0 != ret) {
-        printk(KERN_ERR "Unable to allocate on-disk inode. "
-                        "Is inode table full? "
-                        "Inode count: %llu\n",
-                        iofs_sb->inode_count);
-        return -ENOSPC;
-    }
-    iofs_inode = kmem_cache_alloc(iofs_inode_cache, GFP_KERNEL);
-    iofs_inode->inode_no = inode_no;
-    iofs_inode->mode = mode;
-    if (S_ISDIR(mode)) {
-        iofs_inode->dir_children_count = 0;
-    } else if (S_ISREG(mode)) {
-        iofs_inode->file_size = 0;
-    } else {
-        printk(KERN_WARNING
-               "Inode %llu is neither a directory nor a regular file",
-               inode_no);
-    }
-
-    // Allocate data block for the new iofs_inode 
-    ret = iofs_alloc_data_block(sb, &iofs_inode->data_block_no);
-    if (0 != ret) {
-        printk(KERN_ERR "Unable to allocate on-disk data block. "
-                        "Is data block table full? "
-                        "Data block count: %llu\n",
-                        iofs_sb->data_block_count);
-        return -ENOSPC;
-    }
-
-    // Create VFS inode 
-    inode = new_inode(sb);
-    if (!inode) {
-        return -ENOMEM;
-    }
-    iofs_fill_inode(sb, inode, iofs_inode);
-
-    // Add new inode to parent dir 
-    ret = iofs_add_dir_record(sb, dir, dentry, inode);
-    if (0 != ret) {
-        printk(KERN_ERR "Failed to add inode %lu to parent dir %lu\n",
-               inode->i_ino, dir->i_ino);
-        return -ENOSPC;
-    }
-
-    inode_init_owner(inode, dir, mode);
-    d_add(dentry, inode);
-
-    // TODO we should free newly allocated inodes when error occurs 
-*/
-    return 0;
-}
-
-int iofs_create(struct inode *dir, struct dentry *dentry,
-                   umode_t mode, bool excl) {
-    return iofs_create_inode(dir, dentry, mode);
-}
-
-int iofs_mkdir(struct inode *dir, struct dentry *dentry,
-                  umode_t mode) {
-    /* @Sankar: The mkdir callback does not have S_IFDIR set.
-       Even ext2 sets it explicitly. Perhaps this is a bug */
-    mode |= S_IFDIR;
-    return iofs_create_inode(dir, dentry, mode);
-}
-
-struct dentry *iofs_lookup(struct inode *dir,
-                              struct dentry *child_dentry,
-                              unsigned int flags) {
-
-/*
-    struct iofs_inode *parent_iofs_inode = IOFS_INODE(dir);
-    struct super_block *sb = dir->i_sb;
-    struct buffer_head *bh;
-    struct iofs_dir_record *dir_record;
-    struct iofs_inode *iofs_child_inode;
-    struct inode *child_inode;
-    uint64_t i;
-
-    bh = sb_bread(sb, parent_iofs_inode->data_block_no);
-    BUG_ON(!bh);
-
-    dir_record = (struct iofs_dir_record *)bh->b_data;
-
-    for (i = 0; i < parent_iofs_inode->dir_children_count; i++) {
-        printk(KERN_INFO "iofs_lookup: i=%llu, dir_record->filename=%s, child_dentry->d_name.name=%s", i, dir_record->filename, child_dentry->d_name.name);    // TODO
-        if (0 == strcmp(dir_record->filename, child_dentry->d_name.name)) {
-            iofs_child_inode = iofs_get_iofs_inode(sb, dir_record->inode_no);
-            child_inode = new_inode(sb);
-            if (!child_inode) {
-                printk(KERN_ERR "Cannot create new inode. No memory.\n");
-                return NULL; 
-            }
-            iofs_fill_inode(sb, child_inode, iofs_child_inode);
-            inode_init_owner(child_inode, dir, iofs_child_inode->mode);
-            d_add(child_dentry, child_inode);
-            return NULL;    
-        }
-        dir_record++;
-    }
-
-    printk(KERN_ERR
-           "No inode found for the filename: %s\n",
-           child_dentry->d_name.name);
-*/
-
-    return NULL;
-}
+MODULE_LICENSE("GPL");

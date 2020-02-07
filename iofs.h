@@ -1,167 +1,148 @@
-#ifndef __IOFS_H__
-#define __IOFS_H__
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2020 Charles Perkins
+ *
+ * Portions derived from work (c) 1999 Al Smith
+ * Portions derived from work (c) 1995,1996 Christian Vogelgsang
+ * Portions derived from IRIX header files (c) 1988 Silicon Graphics
+ */
+#ifndef _IOFS_EFS_H_
+#define _IOFS_EFS_H_
 
-#define BITS_IN_BYTE 8
-#define IOFS_MAGIC 0x9b1ea38d  // [ 141 163 30 155 ] 8D A3 1E 9B -- Oberon Directory Mark
-#define IOFS_DEFAULT_BLOCKSIZE 1024 // 4096
-#define IOFS_DEFAULT_INODE_TABLE_SIZE 256 // 1024
-#define IOFS_DEFAULT_DATA_BLOCK_TABLE_SIZE 256 // 1024
-#define IOFS_FILENAME_MAXLEN 63
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 
-#define IOFS_DIRMARK 0x9B1EA38D
-#define IOFS_HEADERMARK 0x9BA71D86
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#define IOFS_FNLENGTH 32
-#define IOFS_SECTABSIZE 64
-#define IOFS_EXTABSIZE 12
-#define IOFS_SECTORSIZE 1024
-#define IOFS_INDEXSIZE (IOFS_SECTORSIZE / 4)
-#define IOFS_HEADERSIZE 352
-#define IOFS_DIRROOTADR 29
-#define IOFS_DIRPGSIZE 24
-#define IOFS_FILLERSIZE 52
+#include <linux/fs.h>
+#include <linux/uaccess.h>
 
-#define IOFS_DIR  0  // directory
-#define IOFS_CHR  1  // char special
-#define IOFS_BLK  2  // block special
-#define IOFS_REG  3  // regular file
-#define IOFS_FIFO 4  // fifo
-#define IOFS_LNK  5  // symbolic link
-#define IOFS_SOCK 6  // socket
+#define EFS_VERSION "1.0a"
 
-/* Define filesystem structures */
-
-extern struct mutex iofs_sb_lock;
+static const char cprt[] = "EFS: "EFS_VERSION" - (c) 1999 Al Smith <Al.Smith@aeschi.ch.eu.org>";
 
 
-struct  iofs_de {  // directory entry B-tree node
-    char name[IOFS_FNLENGTH];
-    uint32_t  adr;       // sec no of file header
-    uint32_t  p;         // sec no of descendant in directory
-}__attribute__((packed));
+/* 1 block is 512 bytes */
+#define	EFS_BLOCKSIZE_BITS	9
+#define	EFS_BLOCKSIZE		(1 << EFS_BLOCKSIZE_BITS)
 
+typedef	int32_t		efs_block_t;
+typedef uint32_t	efs_ino_t;
 
-struct iofs_fh {    // file header
-    char name[IOFS_FNLENGTH];
-    uint32_t aleng;
-    uint32_t bleng;
-    uint32_t date;
-    uint32_t ext[IOFS_EXTABSIZE];                     // ExtensionTable
-    uint32_t sec[IOFS_SECTABSIZE];                    // SectorTable;
-    char fill[IOFS_SECTORSIZE - IOFS_HEADERSIZE];     // File Data
-}__attribute__((packed));
-
-struct iofs_dp {    // directory page
-    uint32_t m;
-    uint32_t p0;         //sec no of left descendant in directory
-    char fill[IOFS_FILLERSIZE];
-    struct iofs_de e[24];
-}__attribute__((packed));
-
-
-struct iofs_dir_record {
-    char filename[IOFS_FILENAME_MAXLEN];
-    uint64_t inode_no;
-}__attribute__((packed));
-
-struct iofs_inode {
-    uint32_t origin;     // magic number on disk, inode type | sector number in memory
-    union {
-       struct iofs_fh fhb;
-       struct iofs_dp dirb;
-    };
-    struct inode vfs_inode;
-}__attribute__((packed));
-
-
-struct old_iofs_inode {
-    mode_t mode;
-    uint64_t inode_no;
-    uint64_t data_block_no;
-
-    // TODO struct timespec is defined kenrel space,
-    // but mkfs-iofs.c is compiled in user space
-    /*struct timespec atime;
-    struct timespec mtime;
-    struct timespec ctime;*/
-
-    union {
-        uint64_t file_size;
-        uint64_t dir_children_count;
-    };
-};
-
-struct iofs_superblock {
-    uint64_t version;
-    uint64_t magic;
-    uint64_t blocksize;
-
-    uint64_t inode_table_size;
-    uint64_t inode_count;
-
-    uint64_t data_block_table_size;
-    uint64_t data_block_count;
-};
-
-static const uint64_t IOFS_SUPERBLOCK_BLOCK_NO = 0;
-static const uint64_t IOFS_INODE_BITMAP_BLOCK_NO = 1;
-static const uint64_t IOFS_DATA_BLOCK_BITMAP_BLOCK_NO = 2;
-static const uint64_t IOFS_INODE_TABLE_START_BLOCK_NO = 3;
-
-static const uint64_t IOFS_ROOTDIR_INODE_NO = 0;
-// data block no is the absolute block number from start of device
-// data block no offset is the relative block offset from start of data block table
-static const uint64_t IOFS_ROOTDIR_DATA_BLOCK_NO_OFFSET = 0;
-
-/* Helper functions */
-
-static inline struct iofs_inode *INODE_INFO(struct inode *inode)
-{
-	return container_of(inode, struct iofs_inode, vfs_inode);
-}
-
-static inline uint64_t IOFS_INODES_PER_BLOCK_HSB(
-        struct iofs_superblock *iofs_sb) {
-    return iofs_sb->blocksize / sizeof(struct iofs_inode);
-}
-
-static inline uint64_t IOFS_DATA_BLOCK_TABLE_START_BLOCK_NO_HSB(
-        struct iofs_superblock *iofs_sb) {
-    return IOFS_INODE_TABLE_START_BLOCK_NO
-           + iofs_sb->inode_table_size / IOFS_INODES_PER_BLOCK_HSB(iofs_sb)
-           + 1;
-}
-
-#endif /*__IOFS_H__*/
+#define	EFS_DIRECTEXTENTS	12
 
 /*
-extern struct mutex iofs_d_lock;
+ * layout of an extent, in memory and on disk. 8 bytes exactly.
+ */
+typedef union extent_u {
+	unsigned char raw[8];
+	struct extent_s {
+		unsigned int	ex_magic:8;	/* magic # (zero) */
+		unsigned int	ex_bn:24;	/* basic block */
+		unsigned int	ex_length:8;	/* numblocks in this extent */
+		unsigned int	ex_offset:24;	/* logical offset into file */
+	} cooked;
+} efs_extent;
 
-struct iofs_superblock {
-    uint32_t magic;      
-    struct iofs_dpblock dirb;
+typedef struct edevs {
+	__be16		odev;
+	__be32		ndev;
+} efs_devs;
+
+/*
+ * extent based filesystem inode as it appears on disk.  The efs inode
+ * is exactly 128 bytes long.
+ */
+struct	efs_dinode {
+	__be16		di_mode;	/* mode and type of file */
+	__be16		di_nlink;	/* number of links to file */
+	__be16		di_uid;		/* owner's user id */
+	__be16		di_gid;		/* owner's group id */
+	__be32		di_size;	/* number of bytes in file */
+	__be32		di_atime;	/* time last accessed */
+	__be32		di_mtime;	/* time last modified */
+	__be32		di_ctime;	/* time created */
+	__be32		di_gen;		/* generation number */
+	__be16		di_numextents;	/* # of extents */
+	u_char		di_version;	/* version of inode */
+	u_char		di_spare;	/* spare - used by AFS */
+	union di_addr {
+		efs_extent	di_extents[EFS_DIRECTEXTENTS];
+		efs_devs	di_dev;	/* device for IFCHR/IFBLK */
+	} di_u;
 };
 
-struct iofs_inode {
-    uint32_t origin;     // magic number on disk, inode type | sector number in memory
-    union {
-       struct iofs_fhblock fhb;
-       struct iofs_dpblock dirb;
-    };
+/* efs inode storage in memory */
+struct efs_inode_info {
+	int		numextents;
+	int		lastextent;
+
+	efs_extent	extents[EFS_DIRECTEXTENTS];
+	struct inode	vfs_inode;
 };
 
-struct iofs_inode_info {
-        uint64_t pino;
-        uint32_t pidx;
-        uint32_t eidx[24];
-	struct inode vfs_inode;
+#include <linux/efs_fs_sb.h>
+
+#define EFS_DIRBSIZE_BITS	EFS_BLOCKSIZE_BITS
+#define EFS_DIRBSIZE		(1 << EFS_DIRBSIZE_BITS)
+
+struct efs_dentry {
+	__be32		inode;
+	unsigned char	namelen;
+	char		name[3];
 };
 
-static inline struct iofs_inode_info *iofs_i(struct inode *inode)
+#define EFS_DENTSIZE	(sizeof(struct efs_dentry) - 3 + 1)
+#define EFS_MAXNAMELEN  ((1 << (sizeof(char) * 8)) - 1)
+
+#define EFS_DIRBLK_HEADERSIZE	4
+#define EFS_DIRBLK_MAGIC	0xbeef	/* moo */
+
+struct efs_dir {
+	__be16	magic;
+	unsigned char	firstused;
+	unsigned char	slots;
+
+	unsigned char	space[EFS_DIRBSIZE - EFS_DIRBLK_HEADERSIZE];
+};
+
+#define EFS_MAXENTS \
+	((EFS_DIRBSIZE - EFS_DIRBLK_HEADERSIZE) / \
+	 (EFS_DENTSIZE + sizeof(char)))
+
+#define EFS_SLOTAT(dir, slot) EFS_REALOFF((dir)->space[slot])
+
+#define EFS_REALOFF(offset) ((offset << 1))
+
+
+static inline struct efs_inode_info *INODE_INFO(struct inode *inode)
 {
-	return container_of(inode, struct iofs_inode_info, vfs_inode);
+	return container_of(inode, struct efs_inode_info, vfs_inode);
 }
 
-#endif //__IOFS_H__
+static inline struct efs_sb_info *SUPER_INFO(struct super_block *sb)
+{
+	return sb->s_fs_info;
+}
 
-*/
+struct statfs;
+struct fid;
+
+extern const struct inode_operations efs_dir_inode_operations;
+extern const struct file_operations efs_dir_operations;
+extern const struct address_space_operations efs_symlink_aops;
+
+extern struct inode *efs_iget(struct super_block *, unsigned long);
+extern efs_block_t efs_map_block(struct inode *, efs_block_t);
+extern int efs_get_block(struct inode *, sector_t, struct buffer_head *, int);
+
+extern struct dentry *efs_lookup(struct inode *, struct dentry *, unsigned int);
+extern struct dentry *efs_fh_to_dentry(struct super_block *sb, struct fid *fid,
+		int fh_len, int fh_type);
+extern struct dentry *efs_fh_to_parent(struct super_block *sb, struct fid *fid,
+		int fh_len, int fh_type);
+extern struct dentry *efs_get_parent(struct dentry *);
+extern int efs_bmap(struct inode *, int);
+
+#endif /* _IOFS_EFS_H_ */
