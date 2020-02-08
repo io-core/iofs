@@ -22,14 +22,15 @@ const struct inode_operations iofs_dir_inode_operations = {
 	.lookup		= iofs_lookup,
 };
 
-static int iofs_readdir(struct file *file, struct dir_context *ctx)
+static int do_iofs_readdir(struct inode *inode, struct dir_context *ctx)
 {
-	struct inode *inode = file_inode(file);
+	
 	struct buffer_head *bh;
 
 	int			slot, namelen;
 	char			*nameptr;
 	struct iofs_dinode	*dinode;
+        struct iofs_dinode      dinode_buf;
 	struct iofs_de		*dirslot;
 
 	bh = sb_bread(inode->i_sb, 0); //iofs_bmap(inode, block));
@@ -40,14 +41,20 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 		
 	}
 
-	dinode = (struct iofs_dinode *) bh->b_data; 
-
+        
+	dinode = &dinode_buf; //(struct iofs_dinode *) bh->b_data; 
+        memcpy(dinode,bh->b_data,sizeof(dinode_buf));
+        brelse(bh);
 
 	if (le32_to_cpu(dinode->origin) != IOFS_DIRMARK) {
 		pr_err("%s(): invalid directory inode\n", __func__);
-		brelse(bh);
+//		brelse(bh);
 		return 0;
 	}
+
+//	if (dinode->dirb.p0 != 0){
+
+//        }
 
 	for (slot = ctx->pos; slot < dinode->dirb.m && slot < 24; slot++) {
 		dirslot  = &dinode->dirb.e[slot];
@@ -66,8 +73,14 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 	}
 
 
-        brelse(bh);
+//        brelse(bh);
         ctx->pos = dinode->dirb.m;
 
 	return 0;
+}
+
+static int iofs_readdir(struct file *file, struct dir_context *ctx)
+{
+    struct inode *inode = file_inode(file);
+    return do_iofs_readdir( inode, ctx ); 
 }
