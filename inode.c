@@ -17,11 +17,11 @@
 
 static int iofs_readpage(struct file *file, struct page *page)
 {
-	return block_read_full_page(page,iofs_get_block);
+	return 0; //block_read_full_page(page,iofs_get_block);
 }
 static sector_t _iofs_bmap(struct address_space *mapping, sector_t block)
 {
-	return generic_block_bmap(mapping,block,iofs_get_block);
+	return 0; //generic_block_bmap(mapping,block,iofs_get_block);
 }
 static const struct address_space_operations iofs_aops = {
 	.readpage = iofs_readpage,
