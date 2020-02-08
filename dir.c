@@ -104,6 +104,9 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 			namelen  = strnlen(dirslot->name,24);
 			nameptr  = dirslot->name;
 
+                        pr_debug("%s(): slot %d name \"%s\", namelen %u\n",
+                                 __func__, slot, 
+                                 nameptr, namelen);
 	                ctx->pos = slot;
 	                if (!dir_emit(ctx, nameptr, namelen, dirslot->adr, DT_UNKNOWN)) {
 	                        brelse(bh);
