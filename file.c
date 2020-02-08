@@ -29,7 +29,7 @@ int iofs_get_block(struct inode *inode, sector_t iblock,
 #endif
 		return 0;
 	}
-//	phys = iofs_map_block(inode, iblock);
+	phys = 0; //iofs_map_block(inode, iblock);
 	if (phys)
 		map_bh(bh_result, inode->i_sb, phys);
 	return 0;

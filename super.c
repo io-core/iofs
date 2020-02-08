@@ -42,27 +42,8 @@ static struct file_system_type iofs_fs_type = {
 	.kill_sb	= iofs_kill_sb,
 	.fs_flags	= FS_REQUIRES_DEV,
 };
-MODULE_ALIAS_FS("efs");
 
-static struct pt_types sgi_pt_types[] = {
-	{0x00,		"SGI vh"},
-	{0x01,		"SGI trkrepl"},
-	{0x02,		"SGI secrepl"},
-	{0x03,		"SGI raw"},
-	{0x04,		"SGI bsd"},
-	{SGI_SYSV,	"SGI sysv"},
-	{0x06,		"SGI vol"},
-	{SGI_EFS,	"SGI efs"},
-	{0x08,		"SGI lv"},
-	{0x09,		"SGI rlv"},
-	{0x0A,		"SGI xfs"},
-	{0x0B,		"SGI xfslog"},
-	{0x0C,		"SGI xlv"},
-	{0x82,		"Linux swap"},
-	{0x83,		"Linux native"},
-	{0,		NULL}
-};
-
+MODULE_ALIAS_FS("iofs");
 
 static struct kmem_cache * iofs_inode_cachep;
 
@@ -158,84 +139,6 @@ static void __exit exit_iofs_fs(void) {
 module_init(init_iofs_fs)
 module_exit(exit_iofs_fs)
 
-static iofs_block_t iofs_validate_vh(struct volume_header *vh) {
-	int		i;
-	__be32		cs, *ui;
-	int		csum;
-	iofs_block_t	sblock = 0; /* shuts up gcc */
-	struct pt_types	*pt_entry;
-	int		pt_type, slice = -1;
-
-	if (be32_to_cpu(vh->vh_magic) != VHMAGIC) {
-		/*
-		 * assume that we're dealing with a partition and allow
-		 * read_super() to try and detect a valid superblock
-		 * on the next block.
-		 */
-		return 0;
-	}
-
-	ui = ((__be32 *) (vh + 1)) - 1;
-	for(csum = 0; ui >= ((__be32 *) vh);) {
-		cs = *ui--;
-		csum += be32_to_cpu(cs);
-	}
-	if (csum) {
-		pr_warn("SGI disklabel: checksum bad, label corrupted\n");
-		return 0;
-	}
-
-#ifdef DEBUG
-	pr_debug("bf: \"%16s\"\n", vh->vh_bootfile);
-
-	for(i = 0; i < NVDIR; i++) {
-		int	j;
-		char	name[VDNAMESIZE+1];
-
-		for(j = 0; j < VDNAMESIZE; j++) {
-			name[j] = vh->vh_vd[i].vd_name[j];
-		}
-		name[j] = (char) 0;
-
-		if (name[0]) {
-			pr_debug("vh: %8s block: 0x%08x size: 0x%08x\n",
-				name, (int) be32_to_cpu(vh->vh_vd[i].vd_lbn),
-				(int) be32_to_cpu(vh->vh_vd[i].vd_nbytes));
-		}
-	}
-#endif
-
-	for(i = 0; i < NPARTAB; i++) {
-		pt_type = (int) be32_to_cpu(vh->vh_pt[i].pt_type);
-		for(pt_entry = sgi_pt_types; pt_entry->pt_name; pt_entry++) {
-			if (pt_type == pt_entry->pt_type) break;
-		}
-#ifdef DEBUG
-		if (be32_to_cpu(vh->vh_pt[i].pt_nblks)) {
-			pr_debug("pt %2d: start: %08d size: %08d type: 0x%02x (%s)\n",
-				 i, (int)be32_to_cpu(vh->vh_pt[i].pt_firstlbn),
-				 (int)be32_to_cpu(vh->vh_pt[i].pt_nblks),
-				 pt_type, (pt_entry->pt_name) ?
-				 pt_entry->pt_name : "unknown");
-		}
-#endif
-		if (IS_IOFS(pt_type)) {
-			sblock = be32_to_cpu(vh->vh_pt[i].pt_firstlbn);
-			slice = i;
-		}
-	}
-
-	if (slice == -1) {
-		pr_notice("partition table contained no EFS partitions\n");
-#ifdef DEBUG
-	} else {
-		pr_info("using slice %d (type %s, offset 0x%x)\n", slice,
-			(pt_entry->pt_name) ? pt_entry->pt_name : "unknown",
-			sblock);
-#endif
-	}
-	return sblock;
-}
 
 static int iofs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super) {
 

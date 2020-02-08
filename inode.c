@@ -49,13 +49,13 @@ static inline void extent_copy(iofs_extent *src, iofs_extent *dst) {
 struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 {
 
-	int i, inode_index;
+//	int i, inode_index;
 //	dev_t device;
-	u32 rdev;
+//	u32 rdev;
 	struct buffer_head *bh;
-	struct iofs_sb_info    *sb = SUPER_INFO(super);
+//	struct iofs_sb_info    *sb = SUPER_INFO(super);
 	struct iofs_inode_info *in;
-	iofs_block_t block, offset;
+//	iofs_block_t block, offset;
 	struct iofs_dinode *iofs_inode;
 	struct inode *inode;
 
@@ -69,11 +69,11 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 
 	bh = sb_bread(inode->i_sb, inode->i_ino/29 -1);
 	if (!bh) {
-		pr_warn("%s() failed at block %d\n", __func__, block);
+		pr_warn("%s() failed at inode %lu\n", __func__, inode->i_ino);
 		goto read_inode_error;
 	}
 
-	iofs_inode = (struct iofs_dinode *) (bh->b_data); // + offset);
+	iofs_inode = (struct iofs_dinode *) (bh->b_data); 
 
         if (iofs_inode->origin == IOFS_DIRMARK) {
           inode->i_mode = 0040777; //octal
