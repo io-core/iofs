@@ -24,37 +24,24 @@ const struct inode_operations iofs_dir_inode_operations = {
 
 static int iofs_readdir(struct file *file, struct dir_context *ctx)
 {
-/*
 	struct inode *inode = file_inode(file);
-	iofs_block_t		block;
-	int			slot;
+	struct buffer_head *bh;
 
-	if (inode->i_size & (IOFS_DIRBSIZE-1))
-		pr_warn("%s(): directory size not a multiple of IOFS_DIRBSIZE\n",
-			__func__);
+	int			slot, namelen;
+	char			*nameptr;
+	struct iofs_dinode	*dinode;
+	struct iofs_de		*dirslot;
 
-	// work out where this entry can be found 
-	block = ctx->pos >> IOFS_DIRBSIZE_BITS;
-
-	// each block contains at most 256 slots 
-	slot  = ctx->pos & 0xff;
-
-	// look at all blocks 
-	while (block < inode->i_blocks) {
-		struct iofs_dir		*dirblock;
-		struct buffer_head *bh;
-
-		// read the dir block 
-		bh = sb_bread(inode->i_sb, iofs_bmap(inode, block));
+		bh = sb_bread(inode->i_sb, 0); //iofs_bmap(inode, block));
 
 		if (!bh) {
-			pr_err("%s(): failed to read dir block %d\n",
-			       __func__, block);
-			break;
+			pr_err("%s(): failed to read dir inode %d\n",
+			       __func__, 29);
+			
 		}
 
-		dirblock = (struct iofs_dir *) bh->b_data; 
-
+		dinode = (struct iofs_dinode *) bh->b_data; 
+/*
 		if (be16_to_cpu(dirblock->magic) != IOFS_DIRBLK_MAGIC) {
 			pr_err("%s(): invalid directory block\n", __func__);
 			brelse(bh);
@@ -101,7 +88,33 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 		slot = 0;
 		block++;
 	}
+
 	ctx->pos = (block << IOFS_DIRBSIZE_BITS) | slot;
 */
+
+
+		if (le32_to_cpu(dinode->origin) != IOFS_DIRMARK) {
+			pr_err("%s(): invalid directory inode\n", __func__);
+			brelse(bh);
+			return 0;
+		}
+
+		for (slot = ctx->pos; slot < dinode->dirb.m && slot < 24; slot++) {
+			dirslot  = &dinode->dirb.e[slot];
+			namelen  = strnlen(dirslot->name,24);
+			nameptr  = dirslot->name;
+
+	                ctx->pos = slot;
+	                if (!dir_emit(ctx, nameptr, namelen, dirslot->adr, DT_UNKNOWN)) {
+	                        brelse(bh);
+	                        return 0;
+	                }
+
+		}
+
+
+        brelse(bh);
+        ctx->pos = 0;
+
 	return 0;
 }

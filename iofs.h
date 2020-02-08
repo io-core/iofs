@@ -105,7 +105,7 @@ struct iofs_dinode {
        struct iofs_fh fhb;
        struct iofs_dp dirb;
     };
-    struct inode vfs_inode;
+//    struct inode vfs_inode;
 }__attribute__((packed));
 
 

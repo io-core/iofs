@@ -67,29 +67,6 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 
 	in = INODE_INFO(inode);
 
-	
-	// EFS layout:
-	//
-	// |   cylinder group    |   cylinder group    |   cylinder group ..etc
-	// |inodes|data          |inodes|data          |inodes|data       ..etc
-	//
-	// work out the inode block index, (considering initially that the
-	// inodes are stored as consecutive blocks). then work out the block
-	// number of that inode given the above layout, and finally the
-	// offset of the inode within that block.
-	
-/*
-	inode_index = inode->i_ino /
-		(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
-
-	block = 1; //sb->fs_start + sb->first_block + 
-		//(sb->group_size * (inode_index / sb->inode_blocks)) +
-		//(inode_index % sb->inode_blocks);
-
-	offset = (inode->i_ino %
-			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode))) *
-		sizeof(struct iofs_dinode);
-*/
 	bh = sb_bread(inode->i_sb, inode->i_ino/29 -1);
 	if (!bh) {
 		pr_warn("%s() failed at block %d\n", __func__, block);
@@ -124,44 +101,13 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
                    = current_time(inode);
 
 
-//	// this is the number of blocks in the file 
-//	if (inode->i_size == 0) {
-		inode->i_blocks = 0;
-//	} else {
-//		inode->i_blocks = ((inode->i_size - 1) >> IOFS_BLOCKSIZE_BITS) + 1;
-//	}
+	inode->i_blocks = 0;
 
-/*
-	rdev = be16_to_cpu(iofs_inode->di_u.di_dev.odev);
-	if (rdev == 0xffff) {
-		rdev = be32_to_cpu(iofs_inode->di_u.di_dev.ndev);
-		if (sysv_major(rdev) > 0xfff)
-			device = 0;
-		else
-			device = MKDEV(sysv_major(rdev), sysv_minor(rdev));
-	} else
-		device = old_decode_dev(rdev);
-
-	// get the number of extents for this object 
-	in->numextents = be16_to_cpu(iofs_inode->di_numextents);
-	in->lastextent = 0;
-
-	// copy the extents contained within the inode to memory 
-	for(i = 0; i < IOFS_DIRECTEXTENTS; i++) {
-		extent_copy(&(iofs_inode->di_u.di_extents[i]), &(in->extents[i]));
-		if (i < in->numextents && in->extents[i].cooked.ex_magic != 0) {
-			pr_warn("extent %d has bad magic number in inode %lu\n",
-				i, inode->i_ino);
-			brelse(bh);
-			goto read_inode_error;
-		}
-	}
-*/
 	brelse(bh);
+
 	pr_debug("iofs_iget(): inode %lu, mode %o\n",
 		 inode->i_ino, inode->i_mode);
-//        pr_debug("iofs_iget(): inode %lu, extents %d, mode %o\n",
-//                 inode->i_ino, in->numextents, inode->i_mode);
+
 	switch (inode->i_mode & S_IFMT) {
 		case S_IFDIR: 
 			inode->i_op = &iofs_dir_inode_operations; 
@@ -197,16 +143,17 @@ read_inode_error:
 	return ERR_PTR(-EIO);
 }
 
+/*
 static inline iofs_block_t
 iofs_extent_check(iofs_extent *ptr, iofs_block_t block, struct iofs_sb_info *sb) {
 	iofs_block_t start;
 	iofs_block_t length;
 	iofs_block_t offset;
 
-	/*
-	 * given an extent and a logical block within a file,
-	 * can this block be found within this extent ?
-	 */
+	//
+	// given an extent and a logical block within a file,
+	// can this block be found within this extent ?
+	//
 	start  = ptr->cooked.ex_bn;
 	length = ptr->cooked.ex_length;
 	offset = ptr->cooked.ex_offset;
@@ -231,11 +178,11 @@ iofs_block_t iofs_map_block(struct inode *inode, iofs_block_t block) {
 	last = in->lastextent;
 
 	if (in->numextents <= IOFS_DIRECTEXTENTS) {
-		/* first check the last extent we returned */
+		// first check the last extent we returned 
 		if ((result = iofs_extent_check(&in->extents[last], block, sb)))
 			return result;
     
-		/* if we only have one extent then nothing can be found */
+		// if we only have one extent then nothing can be found 
 		if (in->numextents == 1) {
 			pr_err("%s() failed to map (1 extent)\n", __func__);
 			return 0;
@@ -243,10 +190,10 @@ iofs_block_t iofs_map_block(struct inode *inode, iofs_block_t block) {
 
 		direxts = in->numextents;
 
-		/*
-		 * check the stored extents in the inode
-		 * start with next extent and check forwards
-		 */
+		//
+		// check the stored extents in the inode
+		// start with next extent and check forwards
+		//
 		for(dirext = 1; dirext < direxts; dirext++) {
 			cur = (last + dirext) % in->numextents;
 			if ((result = iofs_extent_check(&in->extents[cur], block, sb))) {
@@ -267,13 +214,13 @@ iofs_block_t iofs_map_block(struct inode *inode, iofs_block_t block) {
 	for(indext = 0; indext < indexts; indext++) {
 		cur = (last + indext) % indexts;
 
-		/*
-		 * work out which direct extent contains `cur'.
-		 *
-		 * also compute ibase: i.e. the number of the first
-		 * indirect extent contained within direct extent `cur'.
-		 *
-		 */
+		//
+		// work out which direct extent contains `cur'.
+		//
+		// also compute ibase: i.e. the number of the first
+		// indirect extent contained within direct extent `cur'.
+		//
+		//
 		ibase = 0;
 		for(dirext = 0; cur < ibase && dirext < direxts; dirext++) {
 			ibase += in->extents[dirext].cooked.ex_length *
@@ -281,14 +228,14 @@ iofs_block_t iofs_map_block(struct inode *inode, iofs_block_t block) {
 		}
 
 		if (dirext == direxts) {
-			/* should never happen */
+			// should never happen 
 			pr_err("couldn't find direct extent for indirect extent %d (block %u)\n",
 			       cur, block);
 			if (bh) brelse(bh);
 			return 0;
 		}
 		
-		/* work out block number and offset of this indirect extent */
+		// work out block number and offset of this indirect extent 
 		iblock = sb->fs_start + in->extents[dirext].cooked.ex_bn +
 			(cur - ibase) /
 			(IOFS_BLOCKSIZE / sizeof(iofs_extent));
@@ -331,5 +278,6 @@ iofs_block_t iofs_map_block(struct inode *inode, iofs_block_t block) {
 	pr_err("%s() failed to map block %u (indir)\n", __func__, block);
 	return 0;
 }  
+*/
 
 MODULE_LICENSE("GPL");

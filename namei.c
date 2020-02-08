@@ -16,52 +16,57 @@
 
 static iofs_ino_t iofs_find_entry(struct inode *inode, const char *name, int len)
 {
-/*
+
 	struct buffer_head *bh;
 
 	int			slot, namelen;
 	char			*nameptr;
-	struct iofs_dir		*dirblock;
-	struct iofs_dentry	*dirslot;
+	struct iofs_dinode	*dinode;
+	struct iofs_de		*dirslot;
+
 	iofs_ino_t		inodenum;
-	iofs_block_t		block;
- 
+//	iofs_block_t		block;
+
+
+/* 
 	if (inode->i_size & (IOFS_DIRBSIZE-1))
 		pr_warn("%s(): directory size not a multiple of IOFS_DIRBSIZE\n",
 			__func__);
+*/
 
-	for(block = 0; block < inode->i_blocks; block++) {
+//	for(block = 0; block < inode->i_blocks; block++) {
 
-		bh = sb_bread(inode->i_sb, iofs_bmap(inode, block));
+		bh = sb_bread(inode->i_sb, 0); //iofs_bmap(inode, block));
 		if (!bh) {
-			pr_err("%s(): failed to read dir block %d\n",
-			       __func__, block);
+			pr_err("%s(): failed to read dir inode %d\n",
+			       __func__, 29);
 			return 0;
 		}
     
-		dirblock = (struct iofs_dir *) bh->b_data;
+		dinode = (struct iofs_dinode *) bh->b_data;
 
-		if (be16_to_cpu(dirblock->magic) != IOFS_DIRBLK_MAGIC) {
-			pr_err("%s(): invalid directory block\n", __func__);
+		if (le32_to_cpu(dinode->origin) != IOFS_DIRMARK) {
+			pr_err("%s(): invalid directory inode\n", __func__);
 			brelse(bh);
 			return 0;
 		}
 
-		for (slot = 0; slot < dirblock->slots; slot++) {
-			dirslot  = (struct iofs_dentry *) (((char *) bh->b_data) + IOFS_SLOTAT(dirblock, slot));
+		for (slot = 0; slot < dinode->dirb.m && slot < 24; slot++) {
+			dirslot  = &dinode->dirb.e[slot];
+				// (struct iofs_dp *) (((char *) bh->b_data) + IOFS_SLOTAT(dirblock, slot));
 
-			namelen  = dirslot->namelen;
+			namelen  = strnlen(dirslot->name,24);
 			nameptr  = dirslot->name;
 
 			if ((namelen == len) && (!memcmp(name, nameptr, len))) {
-				inodenum = be32_to_cpu(dirslot->inode);
+				inodenum = le32_to_cpu(dirslot->adr);
 				brelse(bh);
 				return inodenum;
 			}
 		}
 		brelse(bh);
-	}
-*/
+//	}
+
 	return 0;
 }
 
