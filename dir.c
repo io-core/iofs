@@ -22,65 +22,87 @@ const struct inode_operations iofs_dir_inode_operations = {
 	.lookup		= iofs_lookup,
 };
 
-static int do_iofs_readdir(struct inode *inode, struct dir_context *ctx)
+static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *ctx, int start)
 {
 	
+        struct inode *finode = file_inode(file);
 	struct buffer_head *bh;
 
-	int			slot, namelen;
+	int			slot, here, namelen;
 	char			*nameptr;
 	struct iofs_dinode	*dinode;
         struct iofs_dinode      dinode_buf;
 	struct iofs_de		*dirslot;
-
-	bh = sb_bread(inode->i_sb, 0); //iofs_bmap(inode, block));
+	
+	here = start;
+//if (here == 0){
+	bh = sb_bread(finode->i_sb, (ino/29)-1);
 
 	if (!bh) {
 		pr_err("%s(): failed to read dir inode %d\n",
-		       __func__, 29);
-		
+		       __func__, ino);
+		return 0;	
 	}
 
-        
-	dinode = &dinode_buf; //(struct iofs_dinode *) bh->b_data; 
+	dinode = &dinode_buf; 
         memcpy(dinode,bh->b_data,sizeof(dinode_buf));
         brelse(bh);
 
 	if (le32_to_cpu(dinode->origin) != IOFS_DIRMARK) {
-		pr_err("%s(): invalid directory inode\n", __func__);
-//		brelse(bh);
-		return 0;
+		pr_err("%s(): invalid directory inode %d\n", __func__,ino);
+		return here;
 	}
 
-//	if (dinode->dirb.p0 != 0){
 
-//        }
+	if (here==0){
+		if (ctx->pos==0){
+		  dir_emit_dot(file, ctx);
+                  ctx->pos++;
+                }
+		here++;
+	}
 
-	for (slot = ctx->pos; slot < dinode->dirb.m && slot < 24; slot++) {
+        if (dinode->dirb.p0 != 0){
+                pr_debug("%s(): pre recursive read dir inode %d\n",
+                       __func__, ino);
+                here = do_iofs_readdir( file, dinode->dirb.p0, ctx, here );
+        }
+
+
+	for (slot = 0; slot < dinode->dirb.m && slot < 24; slot++) {
 		dirslot  = &dinode->dirb.e[slot];
 		namelen  = strnlen(dirslot->name,24);
 		nameptr  = dirslot->name;
+		if( here >= ctx->pos) {
+	          if (dirslot->p != 0){
+	                pr_debug("%s(): mid recursive read dir inode %d\n",
+	                       __func__, ino);
+	                here = do_iofs_readdir( file, dirslot->p, ctx, here );
+	          }
+                  pr_debug("%s(): slot %d:%d name \"%s\", namelen %u inode %u\n",
+                         __func__, ino, slot,
+                         nameptr, namelen, dirslot->adr);
 
-                pr_debug("%s(): slot %d name \"%s\", namelen %u\n",
-                         __func__, slot, 
-                         nameptr, namelen);
-                ctx->pos = slot;
-                if (!dir_emit(ctx, nameptr, namelen, dirslot->adr, DT_UNKNOWN)) {
+                  ctx->pos++;
+                  if (!dir_emit(ctx, nameptr, namelen, dirslot->adr, DT_UNKNOWN)) {
                         brelse(bh);
-                        return 0;
-                }
-
+                        return here;
+                  }
+		}
+		here++;
 	}
-
-
-//        brelse(bh);
-        ctx->pos = dinode->dirb.m;
-
-	return 0;
+//}else{
+//                pr_debug("%s(): in recursive read dir inode %d\n",
+//                       __func__, ino);
+//}
+	return here;
 }
 
 static int iofs_readdir(struct file *file, struct dir_context *ctx)
 {
     struct inode *inode = file_inode(file);
-    return do_iofs_readdir( inode, ctx ); 
+    int ret;
+    ret = do_iofs_readdir( file, inode->i_ino, ctx, 0 ); 
+    ctx->pos = INT_MAX;
+    return 0;
 }
