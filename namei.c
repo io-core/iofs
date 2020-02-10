@@ -11,15 +11,15 @@
 #include <linux/buffer_head.h>
 #include <linux/string.h>
 #include <linux/exportfs.h>
+//#include <linux/ctype.h>
 #include "iofs.h"
-
 
 static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const char *name, int len)
 {
 
 	struct buffer_head *bh;
 
-	int			slot, namelen;
+	int			slot, namelen, ret;
 	char			*nameptr;
 	struct iofs_dinode	*dinode;
         struct iofs_dinode      dinode_buf;
@@ -27,6 +27,8 @@ static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const 
 
 	iofs_ino_t		inodenum;
         iofs_ino_t		lower;
+
+   if (ino != 0){
 
         bh = sb_bread(sb, (ino/29)-1);
         if (!bh) {
@@ -45,7 +47,9 @@ static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const 
         }
 
         lower = dinode->dirb.p0;
+
 	for (slot = 0; slot < dinode->dirb.m && slot < 24; slot++) {
+
 		dirslot  = &dinode->dirb.e[slot];
 		namelen  = strnlen(dirslot->name,24);
 		nameptr  = dirslot->name;
@@ -53,12 +57,19 @@ static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const 
 		if ((namelen == len) && (!memcmp(name, nameptr, len))) {
 			inodenum = le32_to_cpu(dirslot->adr);
 			return inodenum;
-		}else if(strncmp(name,nameptr,len) < 0 ){
-			return iofs_find_entry(sb,lower,name,len);
+//		}else if(strncmp(name,nameptr,len) < 0 ){
+//			return iofs_find_entry(sb,lower,name,len);
+                }else{
+                      ret=0;
+		      if(strncmp(name,nameptr,len) < 0 )
+                         ret = iofs_find_entry(sb,lower,name,len);
+		      if (ret!=0) return ret;
                 }
-                lower = dirslot->p;
+                lower = le32_to_cpu(dirslot->p);
 	}
-	return 0;
+	return iofs_find_entry(sb,lower,name,len);
+   }
+   return 0;
 }
 
 struct dentry *iofs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
