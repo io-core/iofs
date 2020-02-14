@@ -35,7 +35,7 @@ static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *
 	struct iofs_de		*dirslot;
 	
 	here = start;
-//if (here == 0){
+
 	bh = sb_bread(finode->i_sb, (ino/29)-1);
 
 	if (!bh) {
@@ -63,8 +63,8 @@ static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *
 	}
 
         if (dinode->dirb.p0 != 0){
-                pr_debug("%s(): pre recursive read dir inode %llu\n",
-                       __func__, ino);
+
+
                 here = do_iofs_readdir( file, dinode->dirb.p0, ctx, here );
         }
 
@@ -74,9 +74,9 @@ static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *
 		namelen  = strnlen(dirslot->name,24);
 		nameptr  = dirslot->name;
 		if( here >= ctx->pos) {
-                  pr_debug("%s(): slot %llu:%d name \"%s\", namelen %u inode %u\n",
-                         __func__, ino, slot,
-                         nameptr, namelen, dirslot->adr);
+
+
+
 
                   ctx->pos++;
                   if (!dir_emit(ctx, nameptr, namelen, dirslot->adr, DT_UNKNOWN)) {
@@ -85,8 +85,8 @@ static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *
                   }
 
                   if (dirslot->p != 0){
-                        pr_debug("%s(): descending inode %llu (children of %s)\n",
-                               __func__, ino,nameptr);
+
+
                         here = do_iofs_readdir( file, dirslot->p, ctx, here );
                   }
 

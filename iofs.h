@@ -28,6 +28,8 @@
 #define IOFS_SECTORSIZE 1024
 #define IOFS_INDEXSIZE (IOFS_SECTORSIZE / 4)
 #define IOFS_HEADERSIZE 352
+#define IOFS_INDATASIZE (IOFS_SECTORSIZE - IOFS_HEADERSIZE)
+#define IOFS_SMALLFILELIMIT (IOFS_INDATASIZE + (IOFS_SECTORSIZE * (IOFS_SECTABSIZE - 1)))
 #define IOFS_DIRROOTADR 29
 #define IOFS_DIRPGSIZE 24
 #define IOFS_FILLERSIZE 52
@@ -189,8 +191,8 @@ extern const struct file_operations iofs_dir_operations;
 extern const struct address_space_operations iofs_symlink_aops;
 
 extern struct inode *iofs_iget(struct super_block *, unsigned long);
-//extern iofs_block_t iofs_map_block(struct inode *, iofs_block_t);
-//extern int iofs_get_block(struct inode *, sector_t, struct buffer_head *, int);
+extern iofs_block_t iofs_map_block(struct inode *, iofs_block_t);
+extern int iofs_get_block(struct inode *, sector_t, struct buffer_head *, int);
 
 extern struct dentry *iofs_lookup(struct inode *, struct dentry *, unsigned int);
 extern struct dentry *iofs_fh_to_dentry(struct super_block *sb, struct fid *fid,
