@@ -28,14 +28,14 @@ static int iofs_readpage(struct file *file, struct page *page)
 
         loff_t offset, size, lim;
 	
-        unsigned long fillsize, idx, iidx, sector, sofar;
+        unsigned long fillsize, idx, rmd, iidx, sector, sofar;
 
         buf = kmap(page);
         if (!buf)
                 return -ENOMEM;
 
-        offset = page_offset(page);
-        size = i_size_read(inode);
+        offset = page_offset(page) + IOFS_HEADERSIZE;
+        size = i_size_read(inode) + IOFS_HEADERSIZE;
 
         bh = sb_bread(inode->i_sb, (inode->i_ino/29)-1);
         finode = &finode_buf;
@@ -48,33 +48,26 @@ static int iofs_readpage(struct file *file, struct page *page)
 
         while( (offset < size) && (sofar < PAGE_SIZE) ){
 
-            if (offset < IOFS_INDATASIZE){
-                memcpy(buf,finode->fhb.fill+offset,IOFS_INDATASIZE-offset);
-	        sofar = IOFS_INDATASIZE - offset;
-		offset += sofar;
-	    }else if (offset < IOFS_SMALLFILELIMIT ) {
-		idx = ((offset - IOFS_INDATASIZE) / IOFS_SECTORSIZE)+1;
+	    if (offset < IOFS_SMALLFILELIMIT ) {
+		idx = offset / IOFS_SECTORSIZE;
+		rmd = offset % IOFS_SECTORSIZE;
 		
 	        bh = sb_bread(inode->i_sb, (finode->fhb.sec[idx]/29)-1);
-	        finode = &finode_buf;
-		lim=IOFS_SECTORSIZE;
-		if (sofar+IOFS_SECTORSIZE > PAGE_SIZE) {lim -= PAGE_SIZE-(sofar+IOFS_SECTORSIZE);}
-	        memcpy(buf+sofar,bh->b_data,lim);
+	        
+		lim=IOFS_SECTORSIZE-rmd;
+		if (sofar+lim+rmd > PAGE_SIZE) {lim = PAGE_SIZE-(rmd+sofar);}
+
+	        memcpy(buf+sofar,bh->b_data+rmd,lim);
+		
 	        brelse(bh);
-		sofar+=lim;
-		offset +=lim;
-	    }else{
-//                iidx = (offset - IOFS_INDATASIZE - (IOFS_SECTORSIZE * (IOFS_SECTABSIZE - 1))) / (IOFS_SECTORSIZE * 256);
-//                idx = (offset - IOFS_INDATASIZE - (IOFS_SECTORSIZE * (IOFS_SECTABSIZE - 1))) / (IOFS_SECTORSIZE * 256);
-//                zone = 2;
-//                lim = IOFS_SECTORSIZE;
-	          offset = size;
+		sofar += lim;
+		offset += lim;
 	    }
 	   
 	}
 
         if (sofar < PAGE_SIZE)
-                memset(buf + sofar, 0, PAGE_SIZE - sofar);
+                memset(buf + sofar, 'X', PAGE_SIZE - sofar);
         if (ret == 0)
                 SetPageUptodate(page);
 
@@ -148,7 +141,10 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 //	i_uid_write(inode, (uid_t)be16_to_cpu(iofs_inode->di_uid));
 //	i_gid_write(inode, (gid_t)be16_to_cpu(iofs_inode->di_gid));
 
-	inode->i_size  = iofs_inode->fhb.aleng * 1024 + iofs_inode->fhb.bleng - 352;  //be32_to_cpu(iofs_inode->di_size);
+	inode->i_size  = (iofs_inode->fhb.aleng * 1024) + iofs_inode->fhb.bleng - 352; 
+
+        if (inode->i_size > IOFS_SMALLFILELIMIT) inode->i_size = IOFS_SMALLFILELIMIT;
+
 
         tv = iofs_inode->fhb.date;
     //                  year        month             day                  hour                 minute            second
