@@ -28,7 +28,7 @@ static int iofs_readpage(struct file *file, struct page *page)
 
         loff_t offset, size, lim;
 	
-        unsigned long fillsize, idx, rmd, iidx, sector, sofar;
+        unsigned long fillsize, idx, rmd, iidx, rrmd, sector, sofar, *pidx;
 
         buf = kmap(page);
         if (!buf)
@@ -48,10 +48,18 @@ static int iofs_readpage(struct file *file, struct page *page)
 
         while( (offset < size) && (sofar < PAGE_SIZE) ){
 
-	    if (offset < IOFS_SMALLFILELIMIT ) {
+            rmd = offset % IOFS_SECTORSIZE;
+
+	    if (offset < IOFS_SECTABSIZE * IOFS_SECTORSIZE ) {
 		idx = offset / IOFS_SECTORSIZE;
-		rmd = offset % IOFS_SECTORSIZE;
-		
+	    }else{
+		iidx = (offset - (IOFS_SECTABSIZE * IOFS_SECTORSIZE )) / (IOFS_SECTORSIZE*256);
+                rrmd = (offset - (IOFS_SECTABSIZE * IOFS_SECTORSIZE )) % (IOFS_SECTORSIZE*256);
+                bh = sb_bread(inode->i_sb, (finode->fhb.ext[iidx]/29)-1);
+		pidx=(unsigned long *)bh->b_data+((rrmd/256)*4);
+		idx = *pidx;
+                brelse(bh);
+	    }	
 	        bh = sb_bread(inode->i_sb, (finode->fhb.sec[idx]/29)-1);
 	        
 		lim=IOFS_SECTORSIZE-rmd;
@@ -62,7 +70,7 @@ static int iofs_readpage(struct file *file, struct page *page)
 	        brelse(bh);
 		sofar += lim;
 		offset += lim;
-	    }
+	    
 	   
 	}
 
@@ -143,7 +151,7 @@ struct inode *iofs_iget(struct super_block *super, unsigned long ino)
 
 	inode->i_size  = (iofs_inode->fhb.aleng * 1024) + iofs_inode->fhb.bleng - 352; 
 
-        if (inode->i_size > IOFS_SMALLFILELIMIT) inode->i_size = IOFS_SMALLFILELIMIT;
+//        if (inode->i_size > IOFS_SMALLFILELIMIT) inode->i_size = IOFS_SMALLFILELIMIT;
 
 
         tv = iofs_inode->fhb.date;
