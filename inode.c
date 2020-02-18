@@ -47,11 +47,11 @@ static int iofs_readpage(struct file *file, struct page *page)
 	sofar = 0;
 	ret = 0;
 	spg = 0;
-	idx = offset / IOFS_SECTORSIZE;
 
         while( (offset < size) && (sofar < PAGE_SIZE) ){
 
             rmd = offset % IOFS_SECTORSIZE;
+            idx = offset / IOFS_SECTORSIZE;
 
 	    if ( idx < IOFS_SECTABSIZE ) {
 		spg = finode->fhb.sec[ idx ];
@@ -66,7 +66,7 @@ static int iofs_readpage(struct file *file, struct page *page)
             lim=IOFS_SECTORSIZE-rmd;
             if (sofar+lim+rmd > PAGE_SIZE) {lim = PAGE_SIZE-(rmd+sofar);}
 	
-	    if (idx % 29 == 0){
+	    if (spg % 29 == 0){
 	        bh = sb_bread(inode->i_sb, (spg/29)-1);
 	        memcpy(buf+sofar,bh->b_data+rmd,lim);		
 	        brelse(bh);
