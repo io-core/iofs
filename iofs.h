@@ -22,6 +22,7 @@
 #define IOFS_DIRMARK 0x9B1EA38D
 #define IOFS_HEADERMARK 0x9BA71D86
 
+#define IOFS_ROOTINODE 29
 #define IOFS_FNLENGTH 32
 #define IOFS_SECTABSIZE 64
 #define IOFS_EXTABSIZE 12
@@ -143,7 +144,7 @@ struct iofs_inode_info {
 	struct inode	vfs_inode;
 };
 
-#include "iofs_fs_sb.h"
+//#include "iofs_fs_sb.h"
 
 #define IOFS_DIRBSIZE_BITS	IOFS_BLOCKSIZE_BITS
 #define IOFS_DIRBSIZE		(1 << IOFS_DIRBSIZE_BITS)
