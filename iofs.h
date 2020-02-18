@@ -29,7 +29,7 @@
 #define IOFS_INDEXSIZE (IOFS_SECTORSIZE / 4)
 #define IOFS_HEADERSIZE 352
 #define IOFS_INDATASIZE (IOFS_SECTORSIZE - IOFS_HEADERSIZE)
-#define IOFS_SMALLFILELIMIT (IOFS_INDATASIZE + (IOFS_SECTORSIZE * (IOFS_SECTABSIZE - 1)))
+#define IOFS_SMALLFILELIMIT (IOFS_SECTORSIZE * IOFS_SECTABSIZE)
 #define IOFS_DIRROOTADR 29
 #define IOFS_DIRPGSIZE 24
 #define IOFS_FILLERSIZE 52
@@ -94,6 +94,10 @@ struct iofs_dp {    // directory page
     char fill[IOFS_FILLERSIZE];
     struct iofs_de e[24];
 }__attribute__((packed));
+
+struct iofs_ep {    // extended page
+    uint32_t x[256];
+}__attribute__((packed)); 
 
 
 struct iofs_dir_record {

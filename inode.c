@@ -23,12 +23,13 @@ static int iofs_readpage(struct file *file, struct page *page)
         void * buf;
 	struct iofs_dinode * finode;
 	struct iofs_dinode finode_buf;
+	struct iofs_ep * ep;
         int ret = -EIO;
 
 
         loff_t offset, size, lim;
 	
-        unsigned long fillsize, idx, rmd, iidx, rrmd, sector, sofar, *pidx;
+        unsigned long fillsize, spg, idx, rmd, sofar;
 
         buf = kmap(page);
         if (!buf)
@@ -45,33 +46,35 @@ static int iofs_readpage(struct file *file, struct page *page)
         fillsize = 0;
 	sofar = 0;
 	ret = 0;
+	spg = 0;
+	idx = offset / IOFS_SECTORSIZE;
 
         while( (offset < size) && (sofar < PAGE_SIZE) ){
 
             rmd = offset % IOFS_SECTORSIZE;
 
-	    if (offset < IOFS_SECTABSIZE * IOFS_SECTORSIZE ) {
-		idx = offset / IOFS_SECTORSIZE;
+	    if ( idx < IOFS_SECTABSIZE ) {
+		spg = finode->fhb.sec[ idx ];
 	    }else{
-		iidx = (offset - (IOFS_SECTABSIZE * IOFS_SECTORSIZE )) / (IOFS_SECTORSIZE*256);
-                rrmd = (offset - (IOFS_SECTABSIZE * IOFS_SECTORSIZE )) % (IOFS_SECTORSIZE*256);
-                bh = sb_bread(inode->i_sb, (finode->fhb.ext[iidx]/29)-1);
-		pidx=(unsigned long *)bh->b_data+((rrmd/256)*4);
-		idx = *pidx;
-                brelse(bh);
-	    }	
-	        bh = sb_bread(inode->i_sb, (finode->fhb.sec[idx]/29)-1);
-	        
-		lim=IOFS_SECTORSIZE-rmd;
-		if (sofar+lim+rmd > PAGE_SIZE) {lim = PAGE_SIZE-(rmd+sofar);}
+		idx = idx - IOFS_SECTABSIZE;
+        	bh = sb_bread(inode->i_sb, (    finode->fhb.ext[ idx/256 ]    /29)-1);
+		ep=(struct iofs_ep *)bh->b_data;
+		spg=ep->x[idx%256];
+		brelse(bh);
+	    }
 
-	        memcpy(buf+sofar,bh->b_data+rmd,lim);
-		
+            lim=IOFS_SECTORSIZE-rmd;
+            if (sofar+lim+rmd > PAGE_SIZE) {lim = PAGE_SIZE-(rmd+sofar);}
+	
+	    if (idx % 29 == 0){
+	        bh = sb_bread(inode->i_sb, (spg/29)-1);
+	        memcpy(buf+sofar,bh->b_data+rmd,lim);		
 	        brelse(bh);
-		sofar += lim;
-		offset += lim;
-	    
-	   
+	    }else{
+                pr_debug("bad index for file read: sector %lu\n", idx);
+	    }
+	    sofar += lim;
+	    offset += lim;
 	}
 
         if (sofar < PAGE_SIZE)
