@@ -23,6 +23,7 @@
 #define IOFS_HEADERMARK 0x9BA71D86
 
 #define IOFS_ROOTINODE 29
+#define IOFS_BITMAPSIZE 8192
 #define IOFS_FNLENGTH 32
 #define IOFS_SECTABSIZE 64
 #define IOFS_EXTABSIZE 12
@@ -37,7 +38,7 @@
 #define IOFS_FILENAME_MAXLEN 63
 
 
-static const char cprt[] = "IOFS: "IOFS_VERSION"  ";
+static const char cprt[] = "IOFS: "IOFS_VERSION"\n";
 
 
 /* 1 block is 512 bytes */
@@ -71,6 +72,11 @@ typedef struct edevs {
  * extent based filesystem inode as it appears on disk.  The efs inode
  * is exactly 128 bytes long.
  */
+
+struct iofs_bm { // bitmap for 65536 sectors = 64MB maximum volume size
+    uint32_t s[2048];
+}__attribute__((packed));
+
 
 struct  iofs_de {  // directory entry B-tree node
     char name[IOFS_FNLENGTH];
@@ -198,6 +204,7 @@ extern const struct address_space_operations iofs_symlink_aops;
 extern struct inode *iofs_iget(struct super_block *, unsigned long);
 extern iofs_block_t iofs_map_block(struct inode *, iofs_block_t);
 extern int iofs_get_block(struct inode *, sector_t, struct buffer_head *, int);
+extern int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, int start, bool mark);
 
 extern struct dentry *iofs_lookup(struct inode *, struct dentry *, unsigned int);
 extern struct dentry *iofs_fh_to_dentry(struct super_block *sb, struct fid *fid,

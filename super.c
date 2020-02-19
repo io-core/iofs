@@ -16,8 +16,6 @@
 #include <linux/vfs.h>
 
 #include "iofs.h"
-#include "iofs_vh.h"
-#include "iofs_fs_sb.h"
 
 static int iofs_statfs(struct dentry *dentry, struct kstatfs *buf);
 static int iofs_fill_super(struct super_block *s, void *d, int silent);
@@ -140,13 +138,14 @@ module_init(init_iofs_fs)
 module_exit(exit_iofs_fs)
 
 
-static int iofs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super) {
+static int iofs_validate_super(struct iofs_dinode *sb, struct iofs_dinode *super) {
 
 
-	if (!IS_IOFS_MAGIC(le32_to_cpu(super->fs_magic)))
+	if (le32_to_cpu(super->origin) != IOFS_DIRMARK )
 		return -1;
-	sb->fs_magic     = le32_to_cpu(super->fs_magic);
 /*
+	sb->origin     = le32_to_cpu(super->origin);
+
 	sb->total_blocks = be32_to_cpu(super->fs_size);
 	sb->first_block  = be32_to_cpu(super->fs_firstcg);
 	sb->group_size   = be32_to_cpu(super->fs_cgfsize);
@@ -160,23 +159,24 @@ static int iofs_validate_super(struct iofs_sb_info *sb, struct iofs_super *super
 
 static int iofs_fill_super(struct super_block *s, void *d, int silent)
 {
-	struct iofs_sb_info *sb;
+	struct iofs_dinode *sb;
 	struct buffer_head *bh;
 	struct inode *root;
+        int ret;
 
- 	sb = kzalloc(sizeof(struct iofs_sb_info), GFP_KERNEL);
+ 	sb = kzalloc(sizeof(struct iofs_bm), GFP_KERNEL);
 	if (!sb)
 		return -ENOMEM;
 	s->s_fs_info = sb;
  
-	s->s_magic		= IOFS_SUPER_MAGIC;
+	s->s_magic		= IOFS_DIRMARK;
 	if (!sb_set_blocksize(s, IOFS_BLOCKSIZE)) {
 		pr_err("device does not support %d byte blocks\n",
 			IOFS_BLOCKSIZE);
 		return -EINVAL;
 	}
 
-        sb->fs_start = 1;
+        //sb->fs_start = 1;
 
 	bh = sb_bread(s, 0);
 	if (!bh) {
@@ -184,23 +184,16 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 		return -EIO;
 	}
 		
-	if (iofs_validate_super(sb, (struct iofs_super *) bh->b_data)) {
+	if (iofs_validate_super(sb, (struct iofs_dinode *) bh->b_data)) {
 #ifdef DEBUG
 		pr_warn("invalid superblock at block %u\n",
-			sb->fs_start );
+			0 );
 #endif
 		brelse(bh);
 		return -EINVAL;
 	}
 	brelse(bh);
-/*
-	if (!sb_rdonly(s)) {
-//#ifdef DEBUG
-		pr_info("forcing read-only mode\n");
-//#endif
-		s->s_flags |= SB_RDONLY;
-	}
-*/
+
 	s->s_op   = &iofs_superblock_operations;
 	s->s_export_op = &iofs_export_ops;
 	root = iofs_iget(s, IOFS_ROOTINODE);
@@ -215,6 +208,9 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 		return -ENOMEM;
 	}
 
+        ret = do_iofs_readdir( root, 29, 0, 0, true );
+
+
 	return 0;
 }
 
@@ -223,7 +219,7 @@ static int iofs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 //	struct iofs_sb_info *sbi = SUPER_INFO(sb);
 	u64 id = huge_encode_dev(sb->s_bdev->bd_dev);
 
-	buf->f_type    = IOFS_SUPER_MAGIC;	/* efs magic number */
+	buf->f_type    = IOFS_DIRMARK;	/* iofs magic number */
 	buf->f_bsize   = IOFS_BLOCKSIZE;		/* blocksize */
 //	buf->f_blocks  = sbi->total_groups *	/* total data blocks */
 //			(sbi->group_size - sbi->inode_blocks);

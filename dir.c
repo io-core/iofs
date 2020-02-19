@@ -22,10 +22,9 @@ const struct inode_operations iofs_dir_inode_operations = {
 	.lookup		= iofs_lookup,
 };
 
-static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *ctx, int start)
+int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, int start, bool mark)
 {
-	
-        struct inode *finode = file_inode(file);
+        struct inode *finode = file; //file_inode(file);
 	struct buffer_head *bh;
 
 	int			slot, here, namelen;
@@ -53,19 +52,16 @@ static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *
 		return here;
 	}
 
-
-	if (here==0){
-		if (ctx->pos==0){
-		  dir_emit_dot(file, ctx);
-                  ctx->pos++;
-                }
-		here++;
-	}
+//	if ((!mark) && (here==0)){
+//		if (ctx->pos==0){
+//		  dir_emit_dot(file, ctx);
+//                  ctx->pos++;
+//                }
+//		here++;
+//	}
 
         if (dinode->dirb.p0 != 0){
-
-
-                here = do_iofs_readdir( file, dinode->dirb.p0, ctx, here );
+                here = do_iofs_readdir( file, dinode->dirb.p0, ctx, here, mark );
         }
 
 
@@ -73,24 +69,18 @@ static int do_iofs_readdir(struct file *file, uint64_t ino, struct dir_context *
 		dirslot  = &dinode->dirb.e[slot];
 		namelen  = strnlen(dirslot->name,24);
 		nameptr  = dirslot->name;
-		if( here >= ctx->pos) {
-
-
-
-
-                  ctx->pos++;
+		if((!mark) && (here >= ctx->pos)) {
+                  ctx->pos++;		  
                   if (!dir_emit(ctx, nameptr, namelen, dirslot->adr, DT_UNKNOWN)) {
-                        brelse(bh);
                         return here;
-                  }
-
+		  }
                   if (dirslot->p != 0){
-
-
-                        here = do_iofs_readdir( file, dirslot->p, ctx, here );
+                        here = do_iofs_readdir( file, dirslot->p, ctx, here, mark );
                   }
-
-
+		}else{
+                  if (dirslot->p != 0){
+                        here = do_iofs_readdir( file, dirslot->p, ctx, here, mark );
+                  }
 		}
 		here++;
 	}
@@ -102,7 +92,7 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 {
     struct inode *inode = file_inode(file);
     int ret;
-    ret = do_iofs_readdir( file, inode->i_ino, ctx, 0 ); 
+    ret = do_iofs_readdir( file_inode(file), inode->i_ino, ctx, 0, false ); 
     ctx->pos = INT_MAX;
     return 0;
 }
