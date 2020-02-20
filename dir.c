@@ -64,7 +64,7 @@ void markfile (struct inode *inode, uint32_t ino)
 //                      bm->s[(iino/29)/32]=setbit(bm->s[(iino/29)/32],bm->s[(iino/29)%32]);
 //		    }else{
 //		    }
-//		}
+		}
                 brelse(bh);
 	     
 	   }
