@@ -22,6 +22,56 @@ const struct inode_operations iofs_dir_inode_operations = {
 	.lookup		= iofs_lookup,
 };
 
+static uint32_t setbit( uint32_t n, int b){
+	uint32_t ret = n;
+        if (b < 32) {
+	   ret = ret | (1 << b);
+        }
+	return ret;
+}
+
+
+void markfile (struct inode *inode, uint32_t ino)
+{
+        struct iofs_dinode * finode;
+        struct buffer_head *bh;
+        struct iofs_bm  *bm;
+	struct iofs_ep	*ep;
+	int i;
+	uint32_t iino, sec[IOFS_SECTABSIZE], ext[IOFS_EXTABSIZE];
+	
+
+        bm = inode->i_sb->s_fs_info;
+
+
+
+        bh = sb_bread(inode->i_sb, (ino/29)-1);
+        finode = (struct iofs_dinode *)bh->b_data;
+        memcpy(sec,finode->fhb.sec,IOFS_SECTABSIZE);
+        memcpy(ext,finode->fhb.ext,IOFS_EXTABSIZE);
+        brelse(bh);
+
+	for(i=0;i<finode->fhb.aleng;i++){
+	   if (i < IOFS_SECTABSIZE){
+		iino=sec[i];
+	        bm->s[(iino/29)/32]=setbit(bm->s[(iino/29)/32],bm->s[(iino/29)%32]);
+	   }else{
+                bh = sb_bread(inode->i_sb, (ext[(i-IOFS_SECTABSIZE)/256]/29)-1);
+		ep = (struct iofs_ep *)bh->b_data;
+		if ((i-IOFS_SECTABSIZE)%256 < IOFS_EXTABSIZE){
+//		    iino=ep->x[(i-IOFS_SECTABSIZE)%256];
+//		    if (iino < 65536*29){
+//                      bm->s[(iino/29)/32]=setbit(bm->s[(iino/29)/32],bm->s[(iino/29)%32]);
+//		    }else{
+//		    }
+//		}
+                brelse(bh);
+	     
+	   }
+        } 
+}
+
+
 int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, int start, bool mark)
 {
         struct inode *finode = file; //file_inode(file);
@@ -32,6 +82,7 @@ int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, i
 	struct iofs_dinode	*dinode;
         struct iofs_dinode      dinode_buf;
 	struct iofs_de		*dirslot;
+	struct iofs_bm		*bm;
 	
 	here = start;
 
@@ -50,6 +101,11 @@ int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, i
 	if (le32_to_cpu(dinode->origin) != IOFS_DIRMARK) {
 		pr_err("%s(): invalid directory inode %llu\n", __func__,ino);
 		return here;
+	}
+
+	bm = finode->i_sb->s_fs_info;
+	if (mark) {
+		bm->s[(ino/29)/32]=setbit(bm->s[(ino/29)/32],bm->s[(ino/29)%32]);
 	}
 
 //	if ((!mark) && (here==0)){
@@ -78,6 +134,9 @@ int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, i
                         here = do_iofs_readdir( file, dirslot->p, ctx, here, mark );
                   }
 		}else{
+
+		  markfile(file,dirslot->adr);         
+
                   if (dirslot->p != 0){
                         here = do_iofs_readdir( file, dirslot->p, ctx, here, mark );
                   }

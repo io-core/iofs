@@ -189,7 +189,7 @@ static inline struct iofs_inode_info *INODE_INFO(struct inode *inode)
 	return container_of(inode, struct iofs_inode_info, vfs_inode);
 }
 
-static inline struct iofs_sb_info *SUPER_INFO(struct super_block *sb)
+static inline struct iofs_bm *SUPER_INFO(struct super_block *sb)
 {
 	return sb->s_fs_info;
 }

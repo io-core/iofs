@@ -28,7 +28,7 @@ static struct dentry *iofs_mount(struct file_system_type *fs_type,
 
 static void iofs_kill_sb(struct super_block *s)
 {
-	struct iofs_sb_info *sbi = SUPER_INFO(s);
+	struct iofs_bm *sbi = SUPER_INFO(s);
 	kill_block_super(s);
 	kfree(sbi);
 }
@@ -216,15 +216,17 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 
 static int iofs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 	struct super_block *sb = dentry->d_sb;
-//	struct iofs_sb_info *sbi = SUPER_INFO(sb);
+	struct iofs_bm *bm = SUPER_INFO(sb);
 	u64 id = huge_encode_dev(sb->s_bdev->bd_dev);
+	int i,a = 0;
 
 	buf->f_type    = IOFS_DIRMARK;	/* iofs magic number */
 	buf->f_bsize   = IOFS_BLOCKSIZE;		/* blocksize */
-//	buf->f_blocks  = sbi->total_groups *	/* total data blocks */
-//			(sbi->group_size - sbi->inode_blocks);
-//	buf->f_bfree   = sbi->data_free;	/* free data blocks */
-//	buf->f_bavail  = sbi->data_free;	/* free blocks for non-root */
+	buf->f_blocks  = 65536;
+	for(i=0;i<2048;i++){ a += hweight_long(bm->s[i]);}
+
+	buf->f_bfree   = 65536-a;	/* free data blocks */
+	buf->f_bavail  = 65536-a;	/* free blocks for non-root */
 //	buf->f_files   = sbi->total_groups *	/* total inodes */
 //			sbi->inode_blocks *
 //			(IOFS_BLOCKSIZE / sizeof(struct iofs_dinode));
