@@ -22,51 +22,50 @@ const struct inode_operations iofs_dir_inode_operations = {
 	.lookup		= iofs_lookup,
 };
 
-static uint32_t setbit( uint32_t n, int b){
-	uint32_t ret = n;
-        if (b < 32) {
-	   ret = ret | (1 << b);
-        }
-	return ret;
-}
 
-
-void markfile (struct inode *inode, uint32_t ino)
+void markfile (struct inode *inode, uint32_t ino,struct iofs_bm *bm)
 {
         struct iofs_dinode * finode;
         struct buffer_head *bh;
-        struct iofs_bm  *bm;
+      
 	struct iofs_ep	*ep;
-	int i;
+	int i,ii;
 	uint32_t iino, sec[IOFS_SECTABSIZE], ext[IOFS_EXTABSIZE];
 	
 
-        bm = inode->i_sb->s_fs_info;
-
-
-
         bh = sb_bread(inode->i_sb, (ino/29)-1);
         finode = (struct iofs_dinode *)bh->b_data;
-        memcpy(sec,finode->fhb.sec,IOFS_SECTABSIZE);
-        memcpy(ext,finode->fhb.ext,IOFS_EXTABSIZE);
+	for(i=0;i<IOFS_SECTABSIZE;i++){ sec[i]=finode->fhb.sec[i];}
+        for(i=0;i<IOFS_EXTABSIZE;i++){ ext[i]=finode->fhb.ext[i];}
+
+//        memcpy(sec,finode->fhb.sec,IOFS_SECTABSIZE);
+//        memcpy(ext,finode->fhb.ext,IOFS_EXTABSIZE);
         brelse(bh);
 
 	for(i=0;i<finode->fhb.aleng;i++){
 	   if (i < IOFS_SECTABSIZE){
-		iino=sec[i];
-	        bm->s[(iino/29)/32]=setbit(bm->s[(iino/29)/32],bm->s[(iino/29)%32]);
-	   }else{
-                bh = sb_bread(inode->i_sb, (ext[(i-IOFS_SECTABSIZE)/256]/29)-1);
-		ep = (struct iofs_ep *)bh->b_data;
-		if ((i-IOFS_SECTABSIZE)%256 < IOFS_EXTABSIZE){
-//		    iino=ep->x[(i-IOFS_SECTABSIZE)%256];
-//		    if (iino < 65536*29){
-//                      bm->s[(iino/29)/32]=setbit(bm->s[(iino/29)/32],bm->s[(iino/29)%32]);
-//		    }else{
-//		    }
+		iino=sec[i]/29;
+		if (bm!=0){
+	          BITSET(bm->s[iino/32],iino%32);
 		}
-                brelse(bh);
-	     
+	   }else{
+		 ii=i-IOFS_SECTABSIZE;
+		 if (ii/256 < IOFS_EXTABSIZE){
+
+                    bh = sb_bread(inode->i_sb, (ext[ii/256]/29)-1);
+		    ep = (struct iofs_ep *)bh->b_data;
+		
+		    iino=ep->x[ii%256]/29;
+		    if (iino < 65536){
+		      iino = sec[0]/29;
+			if (bm!=0){
+                        BITSET(bm->s[iino/32],iino%32);
+			}
+		    }
+		    
+		
+                    brelse(bh);
+                }	     
 	   }
         } 
 }
@@ -103,9 +102,11 @@ int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, i
 		return here;
 	}
 
-	bm = finode->i_sb->s_fs_info;
+//	bm = finode->i_sb->s_fs_info;
+        bm = SUPER_INFO(finode->i_sb);
+
 	if (mark) {
-		bm->s[(ino/29)/32]=setbit(bm->s[(ino/29)/32],bm->s[(ino/29)%32]);
+		BITSET(bm->s[(ino/29)/32],(ino/29)%32);
 	}
 
 //	if ((!mark) && (here==0)){
@@ -135,7 +136,7 @@ int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, i
                   }
 		}else{
 
-		  markfile(file,dirslot->adr);         
+		  markfile(file,dirslot->adr,bm);         
 
                   if (dirslot->p != 0){
                         here = do_iofs_readdir( file, dirslot->p, ctx, here, mark );

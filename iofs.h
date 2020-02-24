@@ -183,6 +183,10 @@ struct iofs_dir {
 
 #define IOFS_REALOFF(offset) ((offset << 1))
 
+#define BITSET(val,nbit)   ((val) |=  (1<<(nbit)))
+#define BITCLEAR(val,nbit) ((val) &= ~(1<<(nbit)))
+#define BITFLIP(val,nbit)  ((val) ^=  (1<<(nbit)))
+#define BITCHECK(val,nbit) ((val) &   (1<<(nbit)))
 
 static inline struct iofs_inode_info *INODE_INFO(struct inode *inode)
 {

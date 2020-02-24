@@ -28,9 +28,9 @@ static struct dentry *iofs_mount(struct file_system_type *fs_type,
 
 static void iofs_kill_sb(struct super_block *s)
 {
-	struct iofs_bm *sbi = SUPER_INFO(s);
+	struct iofs_bm *sbm = SUPER_INFO(s);
 	kill_block_super(s);
-	kfree(sbi);
+	kfree(sbm);
 }
 
 static struct file_system_type iofs_fs_type = {
@@ -138,7 +138,7 @@ module_init(init_iofs_fs)
 module_exit(exit_iofs_fs)
 
 
-static int iofs_validate_super(struct iofs_dinode *sb, struct iofs_dinode *super) {
+static int iofs_validate_super(struct iofs_bm *sbm, struct iofs_dinode *super) {
 
 
 	if (le32_to_cpu(super->origin) != IOFS_DIRMARK )
@@ -159,15 +159,15 @@ static int iofs_validate_super(struct iofs_dinode *sb, struct iofs_dinode *super
 
 static int iofs_fill_super(struct super_block *s, void *d, int silent)
 {
-	struct iofs_dinode *sb;
+	struct iofs_bm *sbm;
 	struct buffer_head *bh;
 	struct inode *root;
         int ret;
 
- 	sb = kzalloc(sizeof(struct iofs_bm), GFP_KERNEL);
-	if (!sb)
+ 	sbm = kzalloc(sizeof(struct iofs_bm), GFP_KERNEL);
+	if (!sbm)
 		return -ENOMEM;
-	s->s_fs_info = sb;
+	s->s_fs_info = sbm;
  
 	s->s_magic		= IOFS_DIRMARK;
 	if (!sb_set_blocksize(s, IOFS_BLOCKSIZE)) {
@@ -184,7 +184,7 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 		return -EIO;
 	}
 		
-	if (iofs_validate_super(sb, (struct iofs_dinode *) bh->b_data)) {
+	if (iofs_validate_super(sbm, (struct iofs_dinode *) bh->b_data)) {
 #ifdef DEBUG
 		pr_warn("invalid superblock at block %u\n",
 			0 );
