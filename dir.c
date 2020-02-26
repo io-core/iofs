@@ -22,7 +22,7 @@ const struct inode_operations iofs_dir_inode_operations = {
 //        .create         = iofs_create,
         .lookup         = iofs_lookup,
 //        .link           = iofs_link,
-//        .unlink         = iofs_unlink,
+        .unlink         = iofs_unlink,
 //        .symlink        = iofs_symlink,
 //        .mkdir          = iofs_mkdir,
 //        .rmdir          = iofs_rmdir,
@@ -169,3 +169,32 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
     ctx->pos = INT_MAX;
     return 0;
 }
+
+/*
+int iofs_delete_entry(struct minix_dir_entry *de, struct page *page)
+{
+	struct inode *inode = page->mapping->host;
+	char *kaddr = page_address(page);
+	loff_t pos = page_offset(page) + (char*)de - kaddr;
+	struct minix_sb_info *sbi = minix_sb(inode->i_sb);
+	unsigned len = sbi->s_dirsize;
+	int err;
+
+	lock_page(page);
+	err = minix_prepare_chunk(page, pos, len);
+	if (err == 0) {
+		if (sbi->s_version == MINIX_V3)
+			((minix3_dirent *) de)->inode = 0;
+		else
+			de->inode = 0;
+		err = dir_commit_chunk(page, pos, len);
+	} else {
+		unlock_page(page);
+	}
+	dir_put_page(page);
+	inode->i_ctime = inode->i_mtime = current_time(inode);
+	mark_inode_dirty(inode);
+	return err;
+}
+*/
+
