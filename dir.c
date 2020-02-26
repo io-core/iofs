@@ -19,11 +19,21 @@ const struct file_operations iofs_dir_operations = {
 };
 
 const struct inode_operations iofs_dir_inode_operations = {
-	.lookup		= iofs_lookup,
+//        .create         = iofs_create,
+        .lookup         = iofs_lookup,
+//        .link           = iofs_link,
+//        .unlink         = iofs_unlink,
+//        .symlink        = iofs_symlink,
+//        .mkdir          = iofs_mkdir,
+//        .rmdir          = iofs_rmdir,
+//        .mknod          = iofs_mknod,
+//        .rename         = iofs_rename,
+//        .getattr        = iofs_getattr,
+//        .tmpfile        = iofs_tmpfile,
 };
 
 
-void markfile (struct inode *inode, uint32_t ino,struct iofs_bm *bm)
+void markfile (struct inode *inode, uint32_t ino,struct iofs_bm *bm, bool state)
 {
         struct iofs_dinode * finode;
         struct buffer_head *bh;
@@ -36,17 +46,20 @@ void markfile (struct inode *inode, uint32_t ino,struct iofs_bm *bm)
         bh = sb_bread(inode->i_sb, (ino/29)-1);
         finode = (struct iofs_dinode *)bh->b_data;
 	for(i=0;i<IOFS_SECTABSIZE;i++){ sec[i]=finode->fhb.sec[i];}
-        for(i=0;i<IOFS_EXTABSIZE;i++){ ext[i]=finode->fhb.ext[i];}
-
-//        memcpy(sec,finode->fhb.sec,IOFS_SECTABSIZE);
-//        memcpy(ext,finode->fhb.ext,IOFS_EXTABSIZE);
+	if (finode->fhb.aleng > IOFS_SECTABSIZE){
+          for(i=0;i<IOFS_EXTABSIZE;i++){ ext[i]=finode->fhb.ext[i];}
+	}
         brelse(bh);
 
 	for(i=0;i<finode->fhb.aleng;i++){
 	   if (i < IOFS_SECTABSIZE){
 		iino=sec[i]/29;
 		if (bm!=0){
-	          BITSET(bm->s[iino/32],iino%32);
+		  if (state){
+	            BITSET(bm->s[iino/32],iino%32);
+		  }else{
+                    BITCLEAR(bm->s[iino/32],iino%32);
+		  }
 		}
 	   }else{
 		 ii=i-IOFS_SECTABSIZE;
@@ -59,11 +72,13 @@ void markfile (struct inode *inode, uint32_t ino,struct iofs_bm *bm)
 		    if (iino < 65536){
 		      iino = sec[0]/29;
 			if (bm!=0){
-                        BITSET(bm->s[iino/32],iino%32);
+                          if (state){
+                            BITSET(bm->s[iino/32],iino%32);
+			  }else{
+                            BITCLEAR(bm->s[iino/32],iino%32);
+			  }
 			}
 		    }
-		    
-		
                     brelse(bh);
                 }	     
 	   }
@@ -101,8 +116,6 @@ int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, i
 		pr_err("%s(): invalid directory inode %llu\n", __func__,ino);
 		return here;
 	}
-
-//	bm = finode->i_sb->s_fs_info;
         bm = SUPER_INFO(finode->i_sb);
 
 	if (mark) {
@@ -136,7 +149,7 @@ int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, i
                   }
 		}else{
 
-		  markfile(file,dirslot->adr,bm);         
+		  markfile(file,dirslot->adr,bm,true);         
 
                   if (dirslot->p != 0){
                         here = do_iofs_readdir( file, dirslot->p, ctx, here, mark );

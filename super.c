@@ -167,6 +167,9 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
  	sbm = kzalloc(sizeof(struct iofs_bm), GFP_KERNEL);
 	if (!sbm)
 		return -ENOMEM;
+	sbm->s[0]=~(uint32_t)0;
+        sbm->s[1]=~(uint32_t)0;
+
 	s->s_fs_info = sbm;
  
 	s->s_magic		= IOFS_DIRMARK;
