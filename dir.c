@@ -170,16 +170,18 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
     return 0;
 }
 
-/*
-int iofs_delete_entry(struct minix_dir_entry *de, struct page *page)
+
+int iofs_delete_entry(void)  //struct minix_dir_entry *de, struct page *page)
 {
+/*
 	struct inode *inode = page->mapping->host;
 	char *kaddr = page_address(page);
 	loff_t pos = page_offset(page) + (char*)de - kaddr;
 	struct minix_sb_info *sbi = minix_sb(inode->i_sb);
 	unsigned len = sbi->s_dirsize;
-	int err;
-
+*/
+	int err = -ENOENT;
+/*
 	lock_page(page);
 	err = minix_prepare_chunk(page, pos, len);
 	if (err == 0) {
@@ -194,7 +196,8 @@ int iofs_delete_entry(struct minix_dir_entry *de, struct page *page)
 	dir_put_page(page);
 	inode->i_ctime = inode->i_mtime = current_time(inode);
 	mark_inode_dirty(inode);
+*/
 	return err;
 }
-*/
+
 

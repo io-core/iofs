@@ -279,18 +279,26 @@ int iofs_unlink(struct inode * dir, struct dentry *dentry)
 	struct inode * inode = d_inode(dentry);
 	struct page * page;
 	struct minix_dir_entry * de;
+*/
+        iofs_ino_t inodenum;
+        struct inode *inode = NULL;
 
-	de = minix_find_entry(dentry, &page);
-	if (!de)
+        inodenum = iofs_find_entry(dir->i_sb, dir->i_ino, dentry->d_name.name, dentry->d_name.len);
+        if (inodenum)
+                inode = iofs_iget(dir->i_sb, inodenum);
+
+
+//	de = minix_find_entry(dentry, &page);
+	if (!inodenum)
 		goto end_unlink;
 
-	err = minix_delete_entry(de, page);
-	if (err)
-		goto end_unlink;
+//	err = iofs_delete_entry(de, page);
+//	if (err)
+//		goto end_unlink;
 
 	inode->i_ctime = dir->i_ctime;
 	inode_dec_link_count(inode);
-*/
+
 end_unlink:
 	return err;
 }
