@@ -14,7 +14,7 @@
 //#include <linux/ctype.h>
 #include "iofs.h"
 
-static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const char *name, int len)
+static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const char *name, int len, iofs_ino_t *dpino, int *di)
 {
 
 	struct buffer_head *bh;
@@ -58,16 +58,16 @@ static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const 
 			inodenum = le32_to_cpu(dirslot->adr);
 			return inodenum;
 //		}else if(strncmp(name,nameptr,len) < 0 ){
-//			return iofs_find_entry(sb,lower,name,len);
+//			return iofs_find_entry(sb,lower,name,len,dpino,di);
                 }else{
                       ret=0;
 		      if(strncmp(name,nameptr,len) < 0 )
-                         ret = iofs_find_entry(sb,lower,name,len);
+                         ret = iofs_find_entry(sb,lower,name,len,dpino,di);
 		      if (ret!=0) return ret;
                 }
                 lower = le32_to_cpu(dirslot->p);
 	}
-	return iofs_find_entry(sb,lower,name,len);
+	return iofs_find_entry(sb,lower,name,len,dpino,di);
    }
    return 0;
 }
@@ -76,8 +76,10 @@ struct dentry *iofs_lookup(struct inode *dir, struct dentry *dentry, unsigned in
 {
 	iofs_ino_t inodenum;
 	struct inode *inode = NULL;
+        iofs_ino_t dpino = 0;
+        int di = 0;
 
-	inodenum = iofs_find_entry(dir->i_sb, dir->i_ino, dentry->d_name.name, dentry->d_name.len);
+	inodenum = iofs_find_entry(dir->i_sb, dir->i_ino, dentry->d_name.name, dentry->d_name.len, &dpino, &di);
 	if (inodenum)
 		inode = iofs_iget(dir->i_sb, inodenum);
 
@@ -121,8 +123,10 @@ struct dentry *iofs_get_parent(struct dentry *child)
 {
 	struct dentry *parent = ERR_PTR(-ENOENT);
 	iofs_ino_t ino;
+        iofs_ino_t dpino = 0;
+        int di = 0;
 
-	ino = iofs_find_entry(d_inode(child)->i_sb, d_inode(child)->i_ino, "..", 2);
+	ino = iofs_find_entry(d_inode(child)->i_sb, d_inode(child)->i_ino, "..", 2, &dpino, &di);
 	if (ino)
 		parent = d_obtain_alias(iofs_iget(child->d_sb, ino));
 
@@ -275,22 +279,24 @@ out_dir:
 int iofs_unlink(struct inode * dir, struct dentry *dentry)
 {
 	int err = -ENOENT;
-/*
+
 	struct inode * inode = d_inode(dentry);
+/*
 	struct page * page;
 	struct minix_dir_entry * de;
 */
+/*
         iofs_ino_t inodenum;
         struct inode *inode = NULL;
 
         inodenum = iofs_find_entry(dir->i_sb, dir->i_ino, dentry->d_name.name, dentry->d_name.len);
         if (inodenum)
                 inode = iofs_iget(dir->i_sb, inodenum);
-
+*/
 
 //	de = minix_find_entry(dentry, &page);
-	if (!inodenum)
-		goto end_unlink;
+//	if (!inodenum)
+//		goto end_unlink;
 
 //	err = iofs_delete_entry(de, page);
 //	if (err)
