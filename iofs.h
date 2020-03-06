@@ -211,7 +211,7 @@ extern int iofs_get_block(struct inode *, sector_t, struct buffer_head *, int);
 extern int do_iofs_readdir(struct inode *file, uint64_t ino, struct dir_context *ctx, int start, bool mark);
 
 extern int iofs_unlink(struct inode * dir, struct dentry *dentry);
-extern int iofs_delete_entry(void); //struct minix_dir_entry *de, struct page *page);
+extern int iofs_delete_entry(iofs_ino_t dpino, int di);
 
 extern struct dentry *iofs_lookup(struct inode *, struct dentry *, unsigned int);
 extern struct dentry *iofs_fh_to_dentry(struct super_block *sb, struct fid *fid,

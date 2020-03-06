@@ -171,7 +171,7 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 }
 
 
-int iofs_delete_entry(void)  //struct minix_dir_entry *de, struct page *page)
+int iofs_delete_entry(iofs_ino_t dpino, int di)  //struct minix_dir_entry *de, struct page *page)
 {
 /*
 	struct inode *inode = page->mapping->host;

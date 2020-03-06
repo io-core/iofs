@@ -56,6 +56,8 @@ static iofs_ino_t iofs_find_entry(struct super_block *sb, iofs_ino_t ino, const 
 
 		if ((namelen == len) && (!memcmp(name, nameptr, len))) {
 			inodenum = le32_to_cpu(dirslot->adr);
+			*dpino=ino;
+			*di=slot;
 			return inodenum;
 //		}else if(strncmp(name,nameptr,len) < 0 ){
 //			return iofs_find_entry(sb,lower,name,len,dpino,di);
@@ -279,28 +281,19 @@ out_dir:
 int iofs_unlink(struct inode * dir, struct dentry *dentry)
 {
 	int err = -ENOENT;
+        iofs_ino_t dpino = 0;
+        int di = 0;
 
 	struct inode * inode = d_inode(dentry);
-/*
-	struct page * page;
-	struct minix_dir_entry * de;
-*/
-/*
-        iofs_ino_t inodenum;
-        struct inode *inode = NULL;
 
-        inodenum = iofs_find_entry(dir->i_sb, dir->i_ino, dentry->d_name.name, dentry->d_name.len);
-        if (inodenum)
-                inode = iofs_iget(dir->i_sb, inodenum);
-*/
 
-//	de = minix_find_entry(dentry, &page);
-//	if (!inodenum)
-//		goto end_unlink;
+        iofs_ino_t inodenum = iofs_find_entry(dir->i_sb, dir->i_ino, dentry->d_name.name, dentry->d_name.len, &dpino, &di);
+	if (!inodenum)
+		goto end_unlink;
 
-//	err = iofs_delete_entry(de, page);
-//	if (err)
-//		goto end_unlink;
+	err = iofs_delete_entry(dpino, di);
+	if (err)
+		goto end_unlink;
 
 	inode->i_ctime = dir->i_ctime;
 	inode_dec_link_count(inode);
