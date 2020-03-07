@@ -160,8 +160,10 @@ static int iofs_validate_super(struct iofs_bm *sbm, struct iofs_dinode *super) {
 static int iofs_fill_super(struct super_block *s, void *d, int silent)
 {
 	struct iofs_bm *sbm;
-	struct buffer_head *bh;
+//	struct buffer_head *bh;
+	struct page *page;
 	struct inode *root;
+	void *data;
         int ret;
 
  	sbm = kzalloc(sizeof(struct iofs_bm), GFP_KERNEL);
@@ -181,21 +183,29 @@ static int iofs_fill_super(struct super_block *s, void *d, int silent)
 
         //sb->fs_start = 1;
 
-	bh = sb_bread(s, 0);
-	if (!bh) {
-		pr_err("cannot read superblock\n");
+//	bh = sb_bread(s, 0);
+//	if (!bh) {
+	page = read_mapping_page(s->s_bdev->bd_inode->i_mapping, 0, NULL);
+	if (!page) {		pr_err("cannot read superblock\n");
 		return -EIO;
 	}
 		
-	if (iofs_validate_super(sbm, (struct iofs_dinode *) bh->b_data)) {
+	data = kmap_atomic(page);
+//	dsb = (struct erofs_super_block *)(data + EROFS_SUPER_OFFSET);
+
+	if (iofs_validate_super(sbm, (struct iofs_dinode *) data )) {  //bh->b_data)) {
 #ifdef DEBUG
 		pr_warn("invalid superblock at block %u\n",
 			0 );
 #endif
-		brelse(bh);
+//		brelse(bh);
+		kunmap_atomic(data);
+		put_page(page);
 		return -EINVAL;
 	}
-	brelse(bh);
+//	brelse(bh);
+	kunmap_atomic(data);
+	put_page(page);
 
 	s->s_op   = &iofs_superblock_operations;
 	s->s_export_op = &iofs_export_ops;

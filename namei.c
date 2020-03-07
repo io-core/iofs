@@ -291,7 +291,7 @@ int iofs_unlink(struct inode * dir, struct dentry *dentry)
 	if (!inodenum)
 		goto end_unlink;
 
-	err = iofs_delete_entry(dpino, di);
+	err = iofs_delete_entry(dir, dpino, di);
 	if (err)
 		goto end_unlink;
 

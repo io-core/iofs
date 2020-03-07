@@ -12,6 +12,24 @@
 
 static int iofs_readdir(struct file *, struct dir_context *);
 
+
+
+static struct page * dir_get_page(struct inode *dir, unsigned long n)
+{
+	struct address_space *mapping = dir->i_mapping;
+	struct page *page = read_mapping_page(mapping, n, NULL);
+	if (!IS_ERR(page))
+		kmap(page);
+	return page;
+}
+
+static inline void dir_put_page(struct page *page)
+{
+	kunmap(page);
+	put_page(page);
+}
+
+
 const struct file_operations iofs_dir_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
@@ -171,8 +189,39 @@ static int iofs_readdir(struct file *file, struct dir_context *ctx)
 }
 
 
-int iofs_delete_entry(iofs_ino_t dpino, int di)  //struct minix_dir_entry *de, struct page *page)
+int iofs_delete_entry( struct inode * dir, iofs_ino_t dpino, int di)  
 {
+
+//        int                     slot, here, namelen;
+//        char                    *nameptr;
+        struct iofs_dinode      *dinode;
+        struct iofs_dinode      dinode_buf;
+//        struct iofs_de          *dirslot;
+        struct iofs_bm          *bm;
+        struct buffer_head *bh;
+
+//        here = start;
+
+        bh = sb_bread(dir->i_sb, (dir->i_ino/29)-1);
+
+        if (!bh) {
+                pr_err("%s(): failed to read dir inode %lu\n",
+                       __func__, dir->i_ino);
+                return -ENOENT;
+        }
+
+        dinode = &dinode_buf;
+        memcpy(dinode,bh->b_data,sizeof(dinode_buf));
+        brelse(bh);
+
+        if (le32_to_cpu(dinode->origin) != IOFS_DIRMARK) {
+                pr_err("%s(): invalid directory inode %lu\n", __func__,dir->i_ino);
+                return -ENOENT;
+        }
+//        bm = SUPER_INFO(finode->i_sb);
+
+
+
 /*
 	struct inode *inode = page->mapping->host;
 	char *kaddr = page_address(page);
@@ -180,7 +229,7 @@ int iofs_delete_entry(iofs_ino_t dpino, int di)  //struct minix_dir_entry *de, s
 	struct minix_sb_info *sbi = minix_sb(inode->i_sb);
 	unsigned len = sbi->s_dirsize;
 */
-	int err = -ENOENT;
+	int err = 0; //-ENOENT;
 /*
 	lock_page(page);
 	err = minix_prepare_chunk(page, pos, len);
@@ -194,9 +243,10 @@ int iofs_delete_entry(iofs_ino_t dpino, int di)  //struct minix_dir_entry *de, s
 		unlock_page(page);
 	}
 	dir_put_page(page);
-	inode->i_ctime = inode->i_mtime = current_time(inode);
-	mark_inode_dirty(inode);
 */
+	dir->i_ctime = dir->i_mtime = current_time(dir);
+	mark_inode_dirty(dir);
+
 	return err;
 }
 
